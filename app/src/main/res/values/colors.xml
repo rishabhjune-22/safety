@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="users">#fc1303</color>
+    <color name="TabSelected">#24F704</color> <!-- Red color for selected tabs -->
+    <color name="TabUnselected">#808080</color> <!-- Gray color for unselected tabs -->
+    <color name="LoginBtn">#0A02FA</color>
+    <color name="SignUpBtn">#42E404</color>
+    <color name="signtext">#01092C</color>
+    <color name="click_back_to_login">#2F01A8</color>
+
+        <color name="primaryColor">#6200EE</color>
+        <color name="primaryVariantColor">#3700B3</color>
+        <color name="secondaryColor">#03DAC5</color>
+        <color name="onPrimaryColor">#FFFFFF</color>
+        <color name="iconDefaultColor">#FF4081</color> <!-- This is the default tint color for icons -->
+
+    <color name="drawer_icon">#212121</color>
+    <color name="drawer_background">#ECEFF1</color>
+</resources>

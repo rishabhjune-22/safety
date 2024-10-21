@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme for dark mode -->
+    <style name="Base.Theme.Safety" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Use this to customize your dark theme -->
+
+        <!-- Uncomment or modify these lines as needed to customize colors -->
+        <!--<item name="colorPrimary">@color/my_dark_primary</item>-->
+        <!--<item name="colorPrimaryVariant">@color/my_dark_primary_variant</item>-->
+        <!--<item name="colorOnPrimary">@color/my_dark_on_primary</item>-->
+
+        <!-- You can also set other colors like: -->
+        <!--<item name="colorSecondary">@color/my_dark_secondary</item>-->
+        <!--<item name="colorSecondaryVariant">@color/my_dark_secondary_variant</item>-->
+        <!--<item name="colorOnSecondary">@color/my_dark_on_secondary</item>-->
+
+        <!-- Set status bar and navigation bar colors if needed -->
+<!--        <item name="android:statusBarColor">@color/LoginBtn</item>-->
+        <!--<item name="android:navigationBarColor">@color/my_dark_nav_bar_color</item>-->
+
+    </style>
+
+    <!-- Custom theme for dark mode (if needed) -->
+    <style name="mytheme" parent="Base.Theme.Safety">
+        <!-- Additional customization for dark theme here -->
+        <!-- Uncomment or add any colors you want to change for your dark theme -->
+        <!--<item name="colorPrimary">@color/my_dark_primary</item>-->
+    </style>
+
+</resources>
