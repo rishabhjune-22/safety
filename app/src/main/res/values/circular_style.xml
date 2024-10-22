@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- In your res/values/styles.xml -->
     <style name="circular_shape">
-        <item name="cornerSize" >50%</item>
-
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item> <!-- This ensures a circular shape -->
     </style>
+
 
 
 </resources>

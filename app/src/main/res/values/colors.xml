@@ -18,4 +18,5 @@
 
     <color name="drawer_icon">#212121</color>
     <color name="drawer_background">#ECEFF1</color>
+    <color name="camera_icon">#01092D</color>
 </resources>

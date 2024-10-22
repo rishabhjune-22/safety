@@ -10,8 +10,7 @@
     app:layout_constraintBottom_toTopOf="@+id/guideline_bottom"
     app:layout_constraintEnd_toEndOf="@+id/guideline_end"
     app:layout_constraintStart_toStartOf="@+id/guideline_start"
-    app:layout_constraintTop_toBottomOf="@+id/guideline_top"
-    >
+    app:layout_constraintTop_toBottomOf="@+id/guideline_top">
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_top"
@@ -42,24 +41,17 @@
         android:orientation="vertical"
         app:layout_constraintGuide_end="20dp" />
 
-    <ImageView
-        android:id="@+id/imageView11"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintEnd_toStartOf="@+id/guideline_end"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="@+id/guideline_start"
-        app:layout_constraintTop_toTopOf="@+id/guideline_top"
-        app:srcCompat="@drawable/iconlogo" />
 
     <TableLayout
 
         android:id="@+id/table_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/profile_photo"
         app:layout_constraintEnd_toEndOf="@+id/guideline_end"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="@+id/guideline_start"
-        app:layout_constraintTop_toBottomOf="@id/imageView11">
+        app:layout_constraintTop_toTopOf="parent">
 
         <TableRow
             android:layout_width="match_parent"
@@ -249,6 +241,37 @@
         <!--            android:background="@android:color/transparent" />-->
     </TableLayout>
 
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/profile_photo"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:background="@color/material_dynamic_neutral20"
+        android:padding="10dp"
+
+        app:layout_constraintBottom_toTopOf="@+id/sign_expand_btn"
+        app:layout_constraintEnd_toStartOf="@+id/guideline_end"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="@+id/guideline_start"
+        app:layout_constraintTop_toBottomOf="@+id/table_layout"
+        app:shapeAppearanceOverlay="@style/circular_shape"
+        app:srcCompat="@drawable/baseline_person_24"
+        app:strokeColor="@color/LoginBtn"
+        app:strokeWidth="2dp" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/camera_ic"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        app:backgroundTint="@color/camera_icon"
+        app:layout_constraintBottom_toBottomOf="@+id/profile_photo"
+        app:layout_constraintEnd_toEndOf="@+id/profile_photo"
+        app:srcCompat="@drawable/baseline_camera_alt_24"
+        app:tint="@android:color/white" />
+
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/sign_expand_btn"
         android:layout_width="0dp"
@@ -261,7 +284,7 @@
         app:layout_constraintEnd_toStartOf="@+id/guideline_end"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="@+id/guideline_start"
-        app:layout_constraintTop_toBottomOf="@+id/table_layout" />
+        app:layout_constraintTop_toBottomOf="@+id/profile_photo" />
 
     <TextView
         android:id="@+id/back_to_login"
