@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
@@ -26,6 +27,13 @@ public class HomePageActivity extends AppCompatActivity {
     ActionBarDrawerToggle toggle;
     View view;
     OnBackPressedDispatcher dispatcher;
+
+    ImageButton msgButton;
+    ImageButton attendanceButton;
+    ImageButton trackEmpButton;
+    ImageButton employeesButton ;
+    ImageButton leaveApplicationButton;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,6 +54,7 @@ public class HomePageActivity extends AppCompatActivity {
                 return insets.consumeSystemWindowInsets(); // Prevent default behavior
             }
         });
+
 
 
 

@@ -54,6 +54,8 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.12.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.12.0")
     implementation (libs.firebase.storage)
+    implementation ("androidx.activity:activity:1.7.0")
+    implementation("com.vanniktech:android-image-cropper:4.6.0")
 
 
 }

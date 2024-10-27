@@ -1,11 +1,21 @@
 package com.example.safety;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatButton;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,8 +24,16 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import android.app.DatePickerDialog;
+
+import com.canhub.cropper.CropImage;
+import com.canhub.cropper.CropImageContract;
+import com.canhub.cropper.CropImageContractOptions;
+import com.canhub.cropper.CropImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -30,6 +48,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -40,6 +59,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.yalantis.ucrop.UCrop;
+import android.Manifest;
 
 
 import android.content.Intent;
@@ -59,6 +79,7 @@ import com.github.dhaval2404.imagepicker.ImagePicker;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.yalantis.ucrop.UCrop;
+import com.yalantis.ucrop.model.AspectRatio;
 
 import java.io.File;
 
@@ -75,13 +96,16 @@ public class SignupFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private View view;
-    private EditText fname,lname,email,password,confirm_password,mobile,address,dob;
+    private EditText  name,email,password,confirm_password,mobile,address,dob;
     private TextView back_to_login;
     private AppCompatButton sign_expand_btn;
     private ProgressBar progressBar;
     private FirebaseAuth mAuth;
     private ShapeableImageView profileImage;
     private FloatingActionButton btn;
+    private Uri photoUri;
+
+    private FirebaseFirestore db;
 
 
     // TODO: Rename and change types of parameters
@@ -119,60 +143,90 @@ public class SignupFragment extends Fragment {
         }
     }
 
-    private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
+    ActivityResultLauncher<Intent> cropImageResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Uri imageUri = result.getData().getData();
-                    if (imageUri != null) {
-                        profileImage.setImageDrawable(null);
-                        startCrop(imageUri);
-                    } else {
-                        Toast.makeText(requireContext(), "Image URI is null", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(requireContext(), "Task Cancelled", Toast.LENGTH_SHORT).show();
-                }
-            }
-    );
-
-    // Launcher for handling the Android Photo Picker (API 33+)
-    private final ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.PickVisualMedia(),
-            uri -> {
-                if (uri != null) {
-                    // Handle the picked image here
-                    profileImage.setImageDrawable(null);
-                    startCrop(uri);  // Assuming you want to crop the image
-                } else {
-                    Toast.makeText(requireContext(), "No media selected", Toast.LENGTH_SHORT).show();
-                }
-            }
-    );
-
-    private final ActivityResultLauncher<Intent> uCropLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Uri resultUri = UCrop.getOutput(result.getData());
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    final Uri resultUri = UCrop.getOutput(result.getData());
                     if (resultUri != null) {
-                        profileImage.setImageDrawable(null);
-
-                        // Use Glide to load the cropped image into the ShapeableImageView
-                        Glide.with(requireActivity())
-                                .load(resultUri)
-                                .diskCacheStrategy(DiskCacheStrategy.NONE)  // Disable disk caching
-                                .skipMemoryCache(true)  // Skip memory cache
-                                .into(profileImage);
-                    }
-                } else if (result.getResultCode() == UCrop.RESULT_ERROR) {
-                    Throwable cropError = UCrop.getError(result.getData());
-                    if (cropError != null) {
-                        Toast.makeText(requireContext(), "Crop error: " + cropError.getMessage(), Toast.LENGTH_SHORT).show();
+                        // Use the cropped image Uri (e.g., set it to an ImageView)
+                        profileImage.setImageURI(resultUri);
+                    } else {
+                        Toast.makeText(requireContext(), "Cropping failed", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
     );
+
+    ActivityResultLauncher<PickVisualMediaRequest> pickMedia =
+            registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+                // Callback is invoked after the user selects a media item or closes the
+                // photo picker.
+                if (uri != null) {
+                    //profileImage.setImageURI(uri);
+                    cropPhoto(uri);
+
+                } else {
+                    Toast.makeText(requireContext(),"No Image Selected", Toast.LENGTH_LONG).show();
+                }
+            });
+
+    public void cropPhoto(Uri sourceUri) {
+        Uri destinationUri = Uri.fromFile(new File(requireContext().getCacheDir(), "croppedImage.jpg"));
+
+        UCrop.Options options = new UCrop.Options();
+        options.setCircleDimmedLayer(true);
+        options.setAspectRatioOptions(0, new AspectRatio("1:1", 1, 1));
+        options.setCompressionQuality(80);
+
+        Intent uCropIntent = UCrop.of(sourceUri, destinationUri)
+                .withOptions(options)
+                .getIntent(requireContext());
+
+        // Clear ImageView cache to ensure the new image is visible
+        profileImage.setImageURI(null);  // Clear the previous image
+        cropImageResultLauncher.launch(uCropIntent); // Start uCrop activity
+    }
+
+    private ActivityResultLauncher<Intent> startCamera =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
+                    Uri imageUri = saveBitmapToFile(bitmap);
+                    cropPhoto(imageUri);// Display the captured image
+                } else {
+                    Toast.makeText(requireContext(), "Failed to capture image", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private Uri saveBitmapToFile(Bitmap bitmap) {
+        File cacheDir = requireContext().getCacheDir();
+        File file = new File(cacheDir, "captured_image_" + System.currentTimeMillis() + ".jpg");
+
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out); // Save the bitmap to a file
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return FileProvider.getUriForFile(requireContext(), "com.example.safety.fileprovider", file);
+    }
+
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission is granted, launch the camera
+                    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    startCamera.launch(intent);
+                } else {
+                    Toast.makeText(requireContext(), "Camera permission is required to take photos.", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+
+
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -182,8 +236,7 @@ public class SignupFragment extends Fragment {
         profileImage = view.findViewById(R.id.profile_photo);
         btn = view.findViewById(R.id.camera_ic);
         // Initialize UI elements
-        fname = view.findViewById(R.id.fname_text);
-        lname = view.findViewById(R.id.lname_text);
+        name = view.findViewById(R.id.name_text);
         email = view.findViewById(R.id.email_txt);
         password = view.findViewById(R.id.pass_text);
         confirm_password = view.findViewById(R.id.confirm_pass_txt);
@@ -203,8 +256,7 @@ public class SignupFragment extends Fragment {
         back_to_login.setOnClickListener(v -> switchToLoginFragment());
         dob.setOnClickListener(v -> showDatePickerDialog());
         sign_expand_btn.setOnClickListener(v -> {
-            String fname_txt = fname.getText().toString().trim();
-            String lname_txt = lname.getText().toString().trim();
+            String name_txt = name.getText().toString().trim();
             String email_txt = email.getText().toString().trim();
             String password_txt = password.getText().toString().trim();
             String confirm_password_txt = confirm_password.getText().toString().trim();
@@ -213,14 +265,7 @@ public class SignupFragment extends Fragment {
             String dob_txt = dob.getText().toString().trim();
 
             Map<String, Object> userData = new HashMap<>();
-            userData.put("firstName", fname_txt);
-            userData.put("lastName", lname_txt);
-            userData.put("email", email_txt);
-            userData.put("mobile", mobile_txt);
-            userData.put("address", address_txt);
-            userData.put("dob", dob_txt);
-            userData.put("password", password_txt);
-            userData.put("confirmPassword", confirm_password_txt);
+            userData.put("name", name_txt); userData.put("email", email_txt); userData.put("mobile", mobile_txt); userData.put("address", address_txt); userData.put("dob", dob_txt); userData.put("password", password_txt); userData.put("confirmPassword", confirm_password_txt);
 
             // Validate input fields
             if (!validateInputFields(userData)) {
@@ -228,48 +273,61 @@ public class SignupFragment extends Fragment {
             }
 
             // First, check if the email or mobile already exists
-            checkAccountExists(email_txt, mobile_txt, password_txt, fname_txt, lname_txt, address_txt, dob_txt);
+            checkAccountExists(userData);
         });
 
         btn.setOnClickListener(v -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Use Android Photo Picker for Android 13 (API 33) and higher
-                photoPickerLauncher.launch(new PickVisualMediaRequest.Builder()
-                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                        .build());
-            } else {
-                // Fallback for Android 12 (API 32) and below using traditional image picker
-                ImagePicker.with(requireActivity())
-                        .crop()    // Optional cropping for older Android versions
-                        .compress(1024) // Final image size will be less than 1 MB (Optional)
-                        .maxResultSize(1080, 1080)  // Image resolution
-                        .createIntent(intent -> {
-                            imagePickerLauncher.launch(intent);
-                            return null;
-                        });
-            }
+            String[] options = {"Take Photo", "Choose from Gallery"};
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+            builder.setTitle("Select Image")
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            // Request camera permission before taking a photo
+                            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                // If permission is already granted, launch the camera
+                                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                                startCamera.launch(intent);
+                            } else {
+                                // Request permission if not already granted
+                                requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+                            }
+                        } else if (which == 1) {
+                            // Option to pick image from gallery
+                            pickMedia.launch(new PickVisualMediaRequest.Builder()
+                                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE).build());
+                        }
+                    }).show();
         });
+
 
 
 
         return view;
+
     }
 
-    private void startCrop(Uri sourceUri) {
-        Uri destinationUri = Uri.fromFile(new File(requireContext().getCacheDir(), "croppedImage.png"));
 
-        UCrop.Options options = new UCrop.Options();
-        options.setCircleDimmedLayer(true);  // Circular cropping
-        options.setCompressionQuality(80);
 
-        // Start UCrop using the new launcher
-        Intent intent = UCrop.of(sourceUri, destinationUri)
-                .withAspectRatio(1, 1)
-                .withMaxResultSize(1080, 1080)
-                .withOptions(options)
-                .getIntent(requireContext());
-        uCropLauncher.launch(intent);
+
+    public void takePhoto() {
+
+
+
     }
+
+
+
+
+
+    // Variable to store photo URI
+
+
+
+
+
+
+
+
 
     private void switchToLoginFragment() {
         FragmentManager fragmentManager = requireActivity().getSupportFragmentManager();
@@ -279,37 +337,34 @@ public class SignupFragment extends Fragment {
         fragmentTransaction.commit();
     }
     private boolean validateInputFields(Map<String, Object> userData) {
-        if (Objects.requireNonNull(userData.get("firstName")).toString().trim().isEmpty() || !isValidName(Objects.requireNonNull(userData.get("firstName")).toString())) {
-            Toast.makeText(requireContext(), "Please enter a valid first name", Toast.LENGTH_SHORT).show();
+
+
+        if (Objects.requireNonNull(userData.get("name")).toString().isEmpty() || !isValidName(Objects.requireNonNull(userData.get("name")).toString())) {
+            Toast.makeText(requireContext(), "Please enter a valid name", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if (Objects.requireNonNull(userData.get("lastName")).toString().trim().isEmpty() || !isValidName(Objects.requireNonNull(userData.get("lastName")).toString())) {
-            Toast.makeText(requireContext(), "Please enter a valid last name", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-
-        if (Objects.requireNonNull(userData.get("email")).toString().trim().isEmpty() || !isValidEmail(Objects.requireNonNull(userData.get("email")).toString())) {
+        if (Objects.requireNonNull(userData.get("email")).toString().isEmpty() || !isValidEmail(Objects.requireNonNull(userData.get("email")).toString())) {
             Toast.makeText(requireContext(), "Please enter a valid email address", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if (Objects.requireNonNull(userData.get("password")).toString().trim().isEmpty() || !isValidPassword(Objects.requireNonNull(userData.get("password")).toString())) {
+        if (Objects.requireNonNull(userData.get("password")).toString().isEmpty() || !isValidPassword(Objects.requireNonNull(userData.get("password")).toString())) {
             Toast.makeText(requireContext(), "Password must be at least 8 characters", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if (!Objects.requireNonNull(userData.get("password")).toString().trim().equals(Objects.requireNonNull(userData.get("confirmPassword")).toString().trim())) {
+        if (!Objects.requireNonNull(userData.get("password")).toString().equals(Objects.requireNonNull(userData.get("confirmPassword")).toString().trim())) {
             Toast.makeText(requireContext(), "Passwords do not match", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if (Objects.requireNonNull(userData.get("mobile")).toString().trim().isEmpty() || !isValidMobile(Objects.requireNonNull(userData.get("mobile")).toString())) {
+        if (Objects.requireNonNull(userData.get("mobile")).toString().isEmpty() || !isValidMobile(Objects.requireNonNull(userData.get("mobile")).toString())) {
             Toast.makeText(requireContext(), "Please enter a valid 10-digit mobile number", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if ( Objects.requireNonNull(userData.get("dob")).toString().trim().isEmpty()) {
+        if ( Objects.requireNonNull(userData.get("dob")).toString().isEmpty()) {
             Toast.makeText(requireContext(), "Please select your date of birth", Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -317,7 +372,7 @@ public class SignupFragment extends Fragment {
         return true;
     }
 
-    private void checkAccountExists(String email_txt, String mobile_txt, String password_txt, String fname_txt, String lname_txt, String address_txt, String dob_txt) {
+    private void checkAccountExists(Map<String, Object> userData) {
         // Show ProgressBar while checking the account
         progressBar.setVisibility(View.VISIBLE);
         sign_expand_btn.setEnabled(false);
@@ -325,11 +380,11 @@ public class SignupFragment extends Fragment {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // Check if mobile number exists first
-        checkForExistingField(db, "mobile", mobile_txt, () -> {
+        checkForExistingField(db, "mobile", Objects.requireNonNull(userData.get("mobile")).toString(), () -> {
             // If mobile doesn't exist, check for email
-            checkForExistingField(db, "email", email_txt, () -> {
+            checkForExistingField(db, "email", Objects.requireNonNull(userData.get("email")).toString(), () -> {
                 // If neither exists, proceed with registration
-                registerUser(email_txt, password_txt, fname_txt, lname_txt, mobile_txt, address_txt, dob_txt);
+                registerUser(userData);
             });
         });
     }
@@ -353,38 +408,32 @@ public class SignupFragment extends Fragment {
     }
 
 
-    private void registerUser(String email, String password, String fname, String lname, String mobile, String address, String dob) {
+    private void registerUser(Map<String, Object> userData) {
         // Now, create Firebase Authentication account after checking Firestore
-        mAuth.createUserWithEmailAndPassword(email, password)
+        mAuth.createUserWithEmailAndPassword(Objects.requireNonNull(userData.get("email")).toString(), Objects.requireNonNull(userData.get("password")).toString())
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         // Registration successful, save user data to Firestore
-                        saveUserToFirestore(email, password, fname, lname, mobile, address, dob);
+                        saveUserToFirestore(userData);
                     } else {
                         // Registration failed
-                        Toast.makeText(requireContext(), "Authentication failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "Authentication failed: " + Objects.requireNonNull(task.getException()).getMessage(), Toast.LENGTH_SHORT).show();
                         sign_expand_btn.setEnabled(true);
                         progressBar.setVisibility(View.GONE);
                     }
                 });
     }
 
-    private void saveUserToFirestore(String email, String password, String fname, String lname, String mobile, String address, String dob) {
+    private void saveUserToFirestore(Map<String, Object> userData) {
         // Get Firebase user ID
-        String userId = mAuth.getCurrentUser().getUid();
+        String userId = Objects.requireNonNull(mAuth.getCurrentUser()).getUid();
 
         // Store additional user data in Firestore
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        Map<String, Object> user = new HashMap<>();
-        user.put("firstName", fname);
-        user.put("lastName", lname);
-        user.put("email", email);
-        user.put("mobile", mobile);
-        user.put("address", address);
-        user.put("dob", dob);
+        db= FirebaseFirestore.getInstance();
+
 
         db.collection("users").document(userId)
-                .set(user)
+                .set(userData)
                 .addOnSuccessListener(aVoid -> {
                     // Firestore success
                     Log.d("SIGNUP", "User data added to Firestore");
@@ -436,7 +485,10 @@ public class SignupFragment extends Fragment {
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 requireContext(),
                 (view, year1, month1, dayOfMonth) -> {
-                    dob.setText(dayOfMonth + "/" + (month1 + 1) + "/" + year1);
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                    dob.setText(sdf.format(calendar.getTime()));
+
+
                 },
                 year, month, day
         );

@@ -130,6 +130,7 @@
         android:layout_height="48dp"
         android:background="@drawable/login_btn_design"
         android:capitalize="none"
+        android:foreground="@drawable/login_btn_click_ripple"
         android:paddingStart="10dp"
 
 

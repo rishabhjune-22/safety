@@ -6,7 +6,9 @@
     <color name="TabSelected">#24F704</color> <!-- Red color for selected tabs -->
     <color name="TabUnselected">#808080</color> <!-- Gray color for unselected tabs -->
     <color name="LoginBtn">#0A02FA</color>
+    <color name="LoginBtn_ripple">#4A90E2</color>
     <color name="SignUpBtn">#42E404</color>
+    <color name="SignUpBtn_ripple">#00E676</color>
     <color name="signtext">#01092C</color>
     <color name="click_back_to_login">#2F01A8</color>
 
@@ -19,4 +21,11 @@
     <color name="drawer_icon">#212121</color>
     <color name="drawer_background">#ECEFF1</color>
     <color name="camera_icon">#01092D</color>
+    <color name="profile_header">#BEE3FF</color>
+    <color name="back_to_login">#0005b2</color>
+    <color name="light_gray">#D8DDDD</color>
+    <color name="light_blue">#4DBEE3FF</color>
+
+
+
 </resources>

@@ -1,0 +1,21 @@
+<!-- res/drawable/progress_bar_gradient.xml -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background layer -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <solid android:color="#E0E0E0" /> <!-- Background color (light gray) -->
+            <corners android:radius="10dp" /> <!-- Rounded corners -->
+        </shape>
+    </item>
+    <!-- Progress layer -->
+    <item android:id="@android:id/progress">
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#FF5722"
+            android:centerColor="#FFC107"
+            android:endColor="#8BC34A"
+            android:angle="0" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+</layer-list>

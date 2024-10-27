@@ -1,0 +1,13 @@
+<!-- res/drawable/circular_progress.xml -->
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <rotate
+            android:fromDegrees="0"
+            android:toDegrees="360"
+            android:pivotX="50%"
+            android:pivotY="50%"
+            android:drawable="@drawable/circular_progress_colors"
+            android:duration="1000"
+            android:repeatCount="infinite" />
+    </item>
+</animated-selector>
