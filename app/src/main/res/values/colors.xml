@@ -3,7 +3,7 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="users">#fc1303</color>
-    <color name="TabSelected">#24F704</color> <!-- Red color for selected tabs -->
+    <color name="TabSelected">#FFC107</color> <!-- Red color for selected tabs -->
     <color name="TabUnselected">#808080</color> <!-- Gray color for unselected tabs -->
     <color name="LoginBtn">#0A02FA</color>
     <color name="LoginBtn_ripple">#4A90E2</color>
@@ -25,6 +25,7 @@
     <color name="back_to_login">#0005b2</color>
     <color name="light_gray">#D8DDDD</color>
     <color name="light_blue">#4DBEE3FF</color>
+    <color name="yellow">#2962FF</color>
 
 
 

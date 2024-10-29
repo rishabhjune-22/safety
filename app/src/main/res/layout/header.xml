@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="200dp"
     android:orientation="vertical"
     android:gravity="center"
+    android:padding="16dp"
     android:background="@color/profile_header">
 
-    <!-- Profile Image -->
-    <ImageView
-        android:id="@+id/profile_image"
-        android:layout_width="75dp"
-        android:layout_height="75dp"
-        android:background="@drawable/circle_shape"
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/header_profile"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:padding="10dp"
+        app:srcCompat="@drawable/baseline_person_24"
+        app:strokeColor="@color/TabSelected"
+        app:strokeWidth="2dp"
+        app:shapeAppearanceOverlay="@style/circular_shape" />
 
-        android:scaleType="centerInside"
-        android:src="@drawable/profile_photo" />
-
-    <!-- Profile Name -->
     <TextView
-        android:id="@+id/profile_name"
+        android:id="@+id/header_profile_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@android:color/black"
@@ -27,12 +28,10 @@
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/email_text"
+        android:id="@+id/header_email_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@android:color/black"
         android:text="rkdewangan@i-connectresources.com"
-        android:textSize="18sp"
-        android:textAlignment="center"
-         />
+        android:textSize="16sp" />
 </LinearLayout>

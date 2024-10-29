@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
@@ -18,6 +20,8 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.WindowCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.bumptech.glide.Glide;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.navigation.NavigationView;
 
 public class HomePageActivity extends AppCompatActivity {
@@ -25,7 +29,7 @@ public class HomePageActivity extends AppCompatActivity {
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
-    View view;
+    View view,headerView;
     OnBackPressedDispatcher dispatcher;
 
     ImageButton msgButton;
@@ -33,6 +37,9 @@ public class HomePageActivity extends AppCompatActivity {
     ImageButton trackEmpButton;
     ImageButton employeesButton ;
     ImageButton leaveApplicationButton;
+    String name_txt,profileImageUrl,email_txt ;
+    TextView cardnameTextView,headerProfileName,headerEmailText;
+    ShapeableImageView cardprofileImageView ,headerProfileImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +66,33 @@ public class HomePageActivity extends AppCompatActivity {
 
 
 
+
+        // Retrieve the name and profile image URL from the intent
+        name_txt = getIntent().getStringExtra("name");
+        profileImageUrl = getIntent().getStringExtra("profileImageUrl");
+        email_txt = getIntent().getStringExtra("email");
+
+
+        navigationView = findViewById(R.id.nav_view);
+        headerView = navigationView.getHeaderView(0);
+        cardnameTextView = findViewById(R.id.card_name_text);
+        cardprofileImageView = findViewById(R.id.card_profile);
+        headerEmailText = headerView.findViewById(R.id.header_email_text);
+        headerProfileName = headerView.findViewById(R.id.header_profile_name);
+        headerProfileImage = headerView.findViewById(R.id.header_profile);
+
+
+        cardnameTextView.setText("Hello, " + name_txt);
+        Glide.with(this)
+                .load(profileImageUrl)
+                .placeholder(R.drawable.baseline_person_24)  // Optional placeholder image
+                .into(cardprofileImageView);
+        headerEmailText.setText(email_txt);
+        headerProfileName.setText(name_txt);
+        Glide.with(this)
+                .load(profileImageUrl)
+                .placeholder(R.drawable.baseline_person_24)  // Optional placeholder image
+                .into(headerProfileImage);
 
 
 

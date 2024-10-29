@@ -36,7 +36,6 @@ import com.canhub.cropper.CropImageContractOptions;
 import com.canhub.cropper.CropImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
-
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -60,7 +59,9 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.yalantis.ucrop.UCrop;
 import android.Manifest;
-
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -149,7 +150,7 @@ public class SignupFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     final Uri resultUri = UCrop.getOutput(result.getData());
                     if (resultUri != null) {
-                        // Use the cropped image Uri (e.g., set it to an ImageView)
+                        photoUri=resultUri;
                         profileImage.setImageURI(resultUri);
                     } else {
                         Toast.makeText(requireContext(), "Cropping failed", Toast.LENGTH_SHORT).show();
@@ -163,7 +164,6 @@ public class SignupFragment extends Fragment {
                 // Callback is invoked after the user selects a media item or closes the
                 // photo picker.
                 if (uri != null) {
-                    //profileImage.setImageURI(uri);
                     cropPhoto(uri);
 
                 } else {
@@ -204,9 +204,10 @@ public class SignupFragment extends Fragment {
         File file = new File(cacheDir, "captured_image_" + System.currentTimeMillis() + ".jpg");
 
         try (FileOutputStream out = new FileOutputStream(file)) {
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out); // Save the bitmap to a file
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
             out.flush();
         } catch (IOException e) {
+            Toast.makeText(requireContext(), "Failed to save image", Toast.LENGTH_SHORT).show(); // Notify user of error
             e.printStackTrace();
         }
 
@@ -233,6 +234,7 @@ public class SignupFragment extends Fragment {
         // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_signup, container, false);
         mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
         profileImage = view.findViewById(R.id.profile_photo);
         btn = view.findViewById(R.id.camera_ic);
         // Initialize UI elements
@@ -306,29 +308,6 @@ public class SignupFragment extends Fragment {
 
     }
 
-
-
-
-    public void takePhoto() {
-
-
-
-    }
-
-
-
-
-
-    // Variable to store photo URI
-
-
-
-
-
-
-
-
-
     private void switchToLoginFragment() {
         FragmentManager fragmentManager = requireActivity().getSupportFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -377,7 +356,6 @@ public class SignupFragment extends Fragment {
         progressBar.setVisibility(View.VISIBLE);
         sign_expand_btn.setEnabled(false);
 
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // Check if mobile number exists first
         checkForExistingField(db, "mobile", Objects.requireNonNull(userData.get("mobile")).toString(), () -> {
@@ -409,6 +387,14 @@ public class SignupFragment extends Fragment {
 
 
     private void registerUser(Map<String, Object> userData) {
+        if (photoUri == null) {
+            Toast.makeText(requireContext(), "Please select an image before registering.", Toast.LENGTH_SHORT).show();
+            progressBar.setVisibility(View.GONE);
+            sign_expand_btn.setEnabled(true);
+            return;
+        }
+
+
         // Now, create Firebase Authentication account after checking Firestore
         mAuth.createUserWithEmailAndPassword(Objects.requireNonNull(userData.get("email")).toString(), Objects.requireNonNull(userData.get("password")).toString())
                 .addOnCompleteListener(task -> {
@@ -425,30 +411,46 @@ public class SignupFragment extends Fragment {
     }
 
     private void saveUserToFirestore(Map<String, Object> userData) {
+
+
         // Get Firebase user ID
-        String userId = Objects.requireNonNull(mAuth.getCurrentUser()).getUid();
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference().child("profile_images/" + System.currentTimeMillis() + ".jpg");
+        storageRef.putFile(photoUri)
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Get the download URL after successful upload
+                    taskSnapshot.getStorage().getDownloadUrl().addOnSuccessListener(uri -> {
+                        String imageUrl = uri.toString();
+                        userData.put("profileImageUrl", imageUrl); // Add image URL to user data
 
-        // Store additional user data in Firestore
-        db= FirebaseFirestore.getInstance();
+                        // Get Firebase user ID
+                        String userId = Objects.requireNonNull(mAuth.getCurrentUser()).getUid();
+                        FirebaseFirestore db = FirebaseFirestore.getInstance();
+                        // Store additional user data in Firestore
 
 
-        db.collection("users").document(userId)
-                .set(userData)
-                .addOnSuccessListener(aVoid -> {
-                    // Firestore success
-                    Log.d("SIGNUP", "User data added to Firestore");
-                    Toast.makeText(requireContext(), "User Registered Successfully", Toast.LENGTH_SHORT).show();
-                    sign_expand_btn.setEnabled(true);
+                        db.collection("users").document(userId)
+                                .set(userData)
+                                .addOnSuccessListener(aVoid -> {
+                                    // Firestore success
+                                    Log.d("SIGNUP", "User data added to Firestore");
+                                    Toast.makeText(requireContext(), "User Registered Successfully", Toast.LENGTH_SHORT).show();
+                                    sign_expand_btn.setEnabled(true);
+                                    progressBar.setVisibility(View.GONE);
+                                })
+                                .addOnFailureListener(e -> {
+                                    // Firestore failure
+                                    Toast.makeText(requireContext(), "Firestore error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    sign_expand_btn.setEnabled(true);
+                                    progressBar.setVisibility(View.GONE);
+                                });
+                    });
+                }).addOnFailureListener(e -> {
+                    // Image upload failure
+                    Toast.makeText(requireContext(), "Image upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     progressBar.setVisibility(View.GONE);
-                })
-                .addOnFailureListener(e -> {
-                    // Firestore failure
-                    Toast.makeText(requireContext(), "Firestore error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     sign_expand_btn.setEnabled(true);
-                    progressBar.setVisibility(View.GONE);
                 });
     }
-
     // Helper methods for validation
     public boolean isValidEmail(String email) {
         String emailPattern = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -485,10 +487,9 @@ public class SignupFragment extends Fragment {
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 requireContext(),
                 (view, year1, month1, dayOfMonth) -> {
+                    calendar.set(year1, month1, dayOfMonth); // Update calendar with selected date
                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-                    dob.setText(sdf.format(calendar.getTime()));
-
-
+                    dob.setText(sdf.format(calendar.getTime())); // Set formatted date to TextView
                 },
                 year, month, day
         );

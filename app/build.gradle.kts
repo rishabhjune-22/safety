@@ -56,6 +56,9 @@ dependencies {
     implementation (libs.firebase.storage)
     implementation ("androidx.activity:activity:1.7.0")
     implementation("com.vanniktech:android-image-cropper:4.6.0")
+    implementation("com.google.firebase:firebase-storage")
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation ("com.google.android.material:material")
 
 
 }
