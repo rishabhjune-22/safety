@@ -1,5 +1,6 @@
 package com.example.safety;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -68,9 +69,10 @@ public class HomePageActivity extends AppCompatActivity {
 
 
         // Retrieve the name and profile image URL from the intent
-        name_txt = getIntent().getStringExtra("name");
-        profileImageUrl = getIntent().getStringExtra("profileImageUrl");
-        email_txt = getIntent().getStringExtra("email");
+        name_txt = getIntent().getStringExtra("name") != null ? getIntent().getStringExtra("name") : "User";
+        profileImageUrl = getIntent().getStringExtra("profileImageUrl") != null ? getIntent().getStringExtra("profileImageUrl") : "";
+        email_txt = getIntent().getStringExtra("email") != null ? getIntent().getStringExtra("email") : "";
+
 
 
         navigationView = findViewById(R.id.nav_view);
@@ -95,6 +97,11 @@ public class HomePageActivity extends AppCompatActivity {
                 .into(headerProfileImage);
 
 
+        trackEmpButton = findViewById(R.id.track_activity_btn);
+        trackEmpButton.setOnClickListener(v -> {
+            Intent intent = new Intent(HomePageActivity.this, trackemployee.class);
+            startActivity(intent);
+        });
 
         drawerLayout = findViewById(R.id.drawer_layout);
         toolbar = findViewById(R.id.action_toolbar);
