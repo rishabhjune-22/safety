@@ -5,9 +5,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="5dp"
+
+    >
 
     <LinearLayout
+        android:id="@+id/card_layout"
+        android:background="@color/light_yellow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -66,6 +71,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Check Out"
+                    android:textColor="@color/black"
+
                     app:layout_constraintBottom_toBottomOf="@+id/textView11"
                     app:layout_constraintEnd_toStartOf="@+id/textView11"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -87,6 +94,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Check In"
+                    android:textColor="@color/black"
                     app:layout_constraintBottom_toBottomOf="@+id/textView10"
                     app:layout_constraintEnd_toStartOf="@+id/textView10"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -98,6 +106,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
+                    android:textColor="@color/green"
                     android:text="time"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -109,6 +118,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="time"
+                    android:textColor="@color/red"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -130,6 +140,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="time"
+                    android:textColor="@color/red"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -142,6 +153,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
                     android:text="time"
+                    android:textColor="@color/green"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
                     app:layout_constraintStart_toEndOf="@+id/textView5"
@@ -152,6 +164,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Check Out"
+                    android:textColor="@color/black"
+
                     app:layout_constraintBottom_toBottomOf="@+id/textView17"
                     app:layout_constraintEnd_toStartOf="@+id/textView17"
                     app:layout_constraintHorizontal_bias="0.5"
@@ -163,6 +177,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Check In"
+                    android:textColor="@color/black"
+
                     app:layout_constraintBottom_toBottomOf="@+id/textView16"
                     app:layout_constraintEnd_toStartOf="@+id/textView16"
                     app:layout_constraintHorizontal_bias="0.5"
