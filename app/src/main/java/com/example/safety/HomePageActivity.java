@@ -1,29 +1,29 @@
 package com.example.safety;
 
+
+
+
+import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
-import android.os.Build;
+import android.content.SharedPreferences;
+
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
-import android.view.WindowManager;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.OnBackPressedDispatcher;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
-import androidx.core.view.WindowCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class HomePageActivity extends AppCompatActivity {
     Toolbar toolbar;
@@ -121,7 +121,10 @@ public class HomePageActivity extends AppCompatActivity {
             // Handle navigation view item clicks here
             int id = item.getItemId();
             // For example:
-            // if (id == R.id.nav_home) { }
+             if (id == R.id.nav_logout) {
+                 logOut();
+
+             }
             //drawerLayout.closeDrawers();
             return true;
         });
@@ -145,4 +148,20 @@ public class HomePageActivity extends AppCompatActivity {
 
 
     }
+
+    private void logOut() {
+        SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.clear(); // Clear all saved data
+        editor.apply();
+        FirebaseAuth.getInstance().signOut(); // Sign out of Firebase
+
+        Intent intent = new Intent(HomePageActivity.this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+
+    }
+
 }

@@ -1,5 +1,7 @@
 package com.example.safety;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,13 +42,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EmployeeFragment extends Fragment {
+    private static final String TAG = "EmployeeFragment";
 
-    private View view;
-    private FrameLayout frameLayout;
-    private TabLayout tabLayout;
+    private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
+    private static final String KEY_USER_ID = "userId";
+    private static final String KEY_USER_NAME = "name";
+    private static final String KEY_PROFILE_IMAGE_URL = "profileImageUrl";
+    private static final String KEY_EMAIL = "email";
+
     private EditText email, password;
     private AppCompatButton loginButton;
-    private Group signBtnGroup;
     private TextView signUpTextView;
     private FirebaseAuth mAuth;
 
@@ -67,6 +72,11 @@ public class EmployeeFragment extends Fragment {
         signUpTextView = view.findViewById(R.id.new_emp_click_here);
 
         signUpTextView.setOnClickListener(v -> switchToSignUpFragment());
+        if (isUserLoggedIn()) {
+            launchHomePage();
+        }
+
+
         loginButton.setOnClickListener(v -> {
             String emailText = email.getText().toString().trim();
 
@@ -92,7 +102,10 @@ public class EmployeeFragment extends Fragment {
         Matcher matcher = pattern.matcher(email);
         return matcher.matches();
     }
-
+    private boolean isUserLoggedIn() {
+        SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        return preferences.getBoolean(KEY_IS_LOGGED_IN, false);
+    }
     // Firebase login logic to check if account exists
     public void checkAccountExists(String email, String password) {
         mAuth.signInWithEmailAndPassword(email, password)
@@ -131,15 +144,10 @@ public class EmployeeFragment extends Fragment {
                         String name = documentSnapshot.getString("name");
                         String profileImageUrl = documentSnapshot.getString("profileImageUrl");
                         String email= documentSnapshot.getString("email");
-
-
+                        saveLoginStatus(userId, name, profileImageUrl, email);
+                        launchHomePage();
                         // Pass name and image URL to HomePageActivity
-                        Intent intent = new Intent(requireContext(), HomePageActivity.class);
-                        intent.putExtra("name", name);
-                        intent.putExtra("profileImageUrl", profileImageUrl);
-                        intent.putExtra("email", email);
-                        startActivity(intent);
-                        requireActivity().finish();  // Optional: close the login activity
+                    // Optional: close the login activity
                     } else {
                         Toast.makeText(requireContext(), "User data not found", Toast.LENGTH_SHORT).show();
                     }
@@ -149,4 +157,24 @@ public class EmployeeFragment extends Fragment {
                 });
     }
 
+
+    private void saveLoginStatus(String userId, String name, String profileImageUrl, String email) {
+        SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean(KEY_IS_LOGGED_IN, true);
+        editor.putString(KEY_USER_ID, userId);
+        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_PROFILE_IMAGE_URL, profileImageUrl);
+        editor.putString(KEY_EMAIL, email);
+        editor.apply();
+    }
+    private void launchHomePage() {
+        SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        Intent intent = new Intent(requireContext(), HomePageActivity.class);
+        intent.putExtra("name", preferences.getString(KEY_USER_NAME, ""));
+        intent.putExtra("profileImageUrl", preferences.getString(KEY_PROFILE_IMAGE_URL, ""));
+        intent.putExtra("email", preferences.getString(KEY_EMAIL, ""));
+        startActivity(intent);
+        requireActivity().finish();
+    }
 }

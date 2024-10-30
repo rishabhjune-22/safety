@@ -1,5 +1,6 @@
 package com.example.safety;
-
+import androidx.recyclerview.widget.DiffUtil;
+import java.util.List;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -116,21 +118,73 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         }
     }
 
-    // Simplified filter method with additional logging
+    // Filter method with DiffUtil
     public void filter(String text) {
-        filteredList.clear();
+        List<User> newFilteredList = new ArrayList<>();
         if (text.isEmpty()) {
-            filteredList.addAll(userList);
+            newFilteredList.addAll(userList);
         } else {
             text = text.toLowerCase();
             for (User user : userList) {
                 if (user.getName().toLowerCase().startsWith(text)) {
-                    filteredList.add(user);
+                    newFilteredList.add(user);
                 }
             }
         }
 
+        // Calculate differences between old and new filtered lists
+        UserDiffCallback diffCallback = new UserDiffCallback(filteredList, newFilteredList);
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(diffCallback);
+
+        // Update the filtered list and dispatch the updates
+        filteredList.clear();
+        filteredList.addAll(newFilteredList);
+        diffResult.dispatchUpdatesTo(this);
+
         Log.d(TAG, "filter: Filtered list size after filtering = " + filteredList.size());
-        notifyDataSetChanged(); // Refresh the RecyclerView with the updated filtered list
     }
+
+    // Inside UserAdapter.java
+    public void updateUserList(List<User> newUserList) {
+        this.userList.clear();
+        this.userList.addAll(newUserList);
+        this.filteredList.clear();
+        this.filteredList.addAll(newUserList);
+        notifyDataSetChanged();
+    }
+
+
+}
+class UserDiffCallback extends DiffUtil.Callback {
+
+    private final List<User> oldList;
+    private final List<User> newList;
+
+    public UserDiffCallback(List<User> oldList, List<User> newList) {
+        this.oldList = oldList;
+        this.newList = newList;
+    }
+
+    @Override
+    public int getOldListSize() {
+        return oldList.size();
+    }
+
+    @Override
+    public int getNewListSize() {
+        return newList.size();
+    }
+
+    @Override
+    public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+        // Assuming User has a unique name or ID
+        return oldList.get(oldItemPosition).getName().equals(newList.get(newItemPosition).getName());
+    }
+
+    @Override
+    public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+        return oldList.get(oldItemPosition).equals(newList.get(newItemPosition));
+    }
+
+
 }

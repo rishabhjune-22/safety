@@ -1,6 +1,8 @@
 package com.example.safety;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -9,10 +11,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.appcompat.widget.SearchView;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -27,7 +31,7 @@ public class trackemployee extends AppCompatActivity {
     private RecyclerView recyclerView;
     private UserAdapter userAdapter;
     private List<User> userList;
-    private SearchView searchView;
+    private TextInputEditText searchEditText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,39 +39,39 @@ public class trackemployee extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_trackemployee);
 
+        // Set system padding for edge-to-edge display
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
+        // Initialize views
         recyclerView = findViewById(R.id.recyclerView_users);
-        searchView = findViewById(R.id.searchView);
+        searchEditText = findViewById(R.id.search_bar_edittext);
 
-        // Initialize the list and set up the RecyclerView
+        // Initialize list and set up RecyclerView layout and animations
         userList = new ArrayList<>();
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
 
-        // Fetch users from Firestore and set up the adapter once data is available
+        // Fetch users from Firestore and set up the adapter
         fetchUsersFromFirestore();
 
-        // Set up search functionality
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        // Set up real-time filtering as user types
+        searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
-            public boolean onQueryTextSubmit(String query) {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (userAdapter != null) {
-                    userAdapter.filter(query);
+                    userAdapter.filter(s.toString());
                 }
-                return true;
             }
 
             @Override
-            public boolean onQueryTextChange(String newText) {
-                if (userAdapter != null) {
-                    userAdapter.filter(newText);
-                }
-                return true;
-            }
+            public void afterTextChanged(Editable s) {}
         });
     }
 
@@ -88,9 +92,13 @@ public class trackemployee extends AppCompatActivity {
                             }
                             Log.d(TAG, "fetchUsersFromFirestore: Loaded " + userList.size() + " users.");
 
-                            // Initialize adapter with loaded data
-                            userAdapter = new UserAdapter(this, userList);
-                            recyclerView.setAdapter(userAdapter);
+                            // Initialize the adapter after data is loaded, or update if already initialized
+                            if (userAdapter == null) {
+                                userAdapter = new UserAdapter(this, userList);
+                                recyclerView.setAdapter(userAdapter);
+                            } else {
+                                userAdapter.updateUserList(userList);
+                            }
                         }
                     } else {
                         Toast.makeText(this, "Failed to fetch users", Toast.LENGTH_SHORT).show();
