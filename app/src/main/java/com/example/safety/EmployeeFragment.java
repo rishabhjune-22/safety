@@ -1,10 +1,13 @@
 package com.example.safety;
+import android.Manifest;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
@@ -43,6 +46,7 @@ import java.util.regex.Pattern;
 
 public class EmployeeFragment extends Fragment {
     private static final String TAG = "EmployeeFragment";
+    private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1001;
 
     private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
     private static final String KEY_USER_ID = "userId";
@@ -116,9 +120,6 @@ public class EmployeeFragment extends Fragment {
                             String userId = user.getUid();
                             Toast.makeText(requireContext(), "Login successful!", Toast.LENGTH_SHORT).show();
                             fetchUserDataAndLaunchHomePage(userId);
-//                            Intent intent = new Intent(requireContext(), HomePageActivity.class);
-//                            startActivity(intent);
-//                            requireActivity().finish();  // Optional: close the login activity
 
                         }
                     } else {
@@ -160,7 +161,7 @@ public class EmployeeFragment extends Fragment {
 
     private void saveLoginStatus(String userId, String name, String profileImageUrl, String email) {
         SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
+        SharedPreferences.Editor editor = preferences.edit();// tomake it editable
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_USER_NAME, name);
@@ -168,13 +169,17 @@ public class EmployeeFragment extends Fragment {
         editor.putString(KEY_EMAIL, email);
         editor.apply();
     }
+
     private void launchHomePage() {
-        SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE); //prefsname-filename of shared pref
         Intent intent = new Intent(requireContext(), HomePageActivity.class);
         intent.putExtra("name", preferences.getString(KEY_USER_NAME, ""));
         intent.putExtra("profileImageUrl", preferences.getString(KEY_PROFILE_IMAGE_URL, ""));
         intent.putExtra("email", preferences.getString(KEY_EMAIL, ""));
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+
         requireActivity().finish();
     }
 }

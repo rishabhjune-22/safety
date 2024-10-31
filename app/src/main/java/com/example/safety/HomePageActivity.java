@@ -65,8 +65,11 @@ public class HomePageActivity extends AppCompatActivity {
 
 
 
-
-
+//        SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+//
+//        String name = preferences.getString("name", "");  // Replace "name" with KEY_USER_NAME if defined
+//        String profileImageUrl = preferences.getString("profileImageUrl", "");
+//        String email = preferences.getString("email", "");
 
         // Retrieve the name and profile image URL from the intent
         name_txt = getIntent().getStringExtra("name") != null ? getIntent().getStringExtra("name") : "User";

@@ -43,6 +43,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
     implementation(libs.gridlayout)
+    implementation(libs.play.services.location)
+    implementation(libs.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -60,6 +62,6 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation ("com.google.android.material:material")
     implementation("com.github.skydoves:balloon:1.6.9")
-
+    implementation ("com.google.android.gms:play-services-location:21.3.0")
 
 }

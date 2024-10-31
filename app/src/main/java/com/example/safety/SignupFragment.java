@@ -1,11 +1,14 @@
 package com.example.safety;
 
 import static android.app.Activity.RESULT_OK;
+import com.google.android.gms.location.LocationRequest;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -15,6 +18,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,6 +38,9 @@ import com.canhub.cropper.CropImage;
 import com.canhub.cropper.CropImageContract;
 import com.canhub.cropper.CropImageContractOptions;
 import com.canhub.cropper.CropImageView;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.Priority;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import android.os.Bundle;
@@ -47,6 +54,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -83,8 +91,20 @@ import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.model.AspectRatio;
 
 import java.io.File;
-
-
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link SignupFragment#newInstance} factory method to
@@ -105,8 +125,10 @@ public class SignupFragment extends Fragment {
     private ShapeableImageView profileImage;
     private FloatingActionButton btn;
     private Uri photoUri;
-
+    private FusedLocationProviderClient fusedLocationClient;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private FirebaseFirestore db;
+    private String geoCoordinates ;
 
 
     // TODO: Rename and change types of parameters
@@ -142,7 +164,26 @@ public class SignupFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
+
     }
+    private final ActivityResultLauncher<String> locationPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission granted, proceed with fetching the location
+                    fetchLocationAndSetAddress();
+                    //fetchContinuousLocationUpdates();
+                } else {
+                    // Permission denied, show a message
+                    Toast.makeText(requireContext(), "Location permission denied.", Toast.LENGTH_SHORT).show();
+
+
+                }
+            }
+    );
+
+
 
     ActivityResultLauncher<Intent> cropImageResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -257,17 +298,23 @@ public class SignupFragment extends Fragment {
         back_to_login.setText(spannableString);
         back_to_login.setOnClickListener(v -> switchToLoginFragment());
         dob.setOnClickListener(v -> showDatePickerDialog());
+
+        fetchContinuousLocationUpdates();
+
+
         sign_expand_btn.setOnClickListener(v -> {
             String name_txt = name.getText().toString().trim();
             String email_txt = email.getText().toString().trim();
             String password_txt = password.getText().toString().trim();
             String confirm_password_txt = confirm_password.getText().toString().trim();
             String mobile_txt = mobile.getText().toString().trim();
-            String address_txt = address.getText().toString().trim();
             String dob_txt = dob.getText().toString().trim();
+            String address_txt = address.getText().toString().trim();
+
+            fetchLocationAndSetAddress();
 
             Map<String, Object> userData = new HashMap<>();
-            userData.put("name", name_txt); userData.put("email", email_txt); userData.put("mobile", mobile_txt); userData.put("address", address_txt); userData.put("dob", dob_txt); userData.put("password", password_txt); userData.put("confirmPassword", confirm_password_txt);
+            userData.put("name", name_txt); userData.put("email", email_txt); userData.put("mobile", mobile_txt);; userData.put("dob", dob_txt); userData.put("password", password_txt); userData.put("confirmPassword", confirm_password_txt);userData.put("address", address_txt);
 
             // Validate input fields
             if (!validateInputFields(userData)) {
@@ -394,7 +441,14 @@ public class SignupFragment extends Fragment {
             return;
         }
 
+        if (geoCoordinates == null || geoCoordinates.equals("Unavailable")) {
+            Toast.makeText(requireContext(), "Location not available. Please enable location and try again.", Toast.LENGTH_SHORT).show();
+            progressBar.setVisibility(View.GONE);
+            sign_expand_btn.setEnabled(true);
+            return; // Stop execution here
+        }
 
+        userData.put("geoCoordinates",geoCoordinates);
         // Now, create Firebase Authentication account after checking Firestore
         mAuth.createUserWithEmailAndPassword(Objects.requireNonNull(userData.get("email")).toString(), Objects.requireNonNull(userData.get("password")).toString())
                 .addOnCompleteListener(task -> {
@@ -496,4 +550,94 @@ public class SignupFragment extends Fragment {
 
         datePickerDialog.show();
     }
+
+    private final LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                geoCoordinates = "Unavailable";
+                Toast.makeText(requireContext(), "Unable to fetch location continuously", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            for (Location location : locationResult.getLocations()) {
+                double latitude = location.getLatitude();
+                double longitude = location.getLongitude();
+
+                geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+                Geocoder geocoder = new Geocoder(requireContext());
+                try {
+
+                    List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
+                    if (addresses != null && !addresses.isEmpty()) {
+                        Address address = addresses.get(0);
+                        String tempadd = address.getAddressLine(0);
+                        Log.d("geocode", tempadd);
+                    }
+
+                }
+                catch (Exception e){
+
+                    Log.d("geocode error", e.getMessage());
+                }
+
+                // Log the latitude and longitude
+                Log.d("LocationUpdate", "Latitude: " + latitude + ", Longitude: " + longitude);
+            }
+        }
+    };
+
+
+    private void fetchContinuousLocationUpdates() {
+        LocationRequest locationRequest = new LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, // Priority level
+                10000 // 10 seconds interval for updates
+        )
+                .setMinUpdateIntervalMillis(5000) // Minimum interval between updates
+                .setMaxUpdateDelayMillis(15000) // Maximum delay if updates are delayed
+                .build(); // Minimum interval between updates
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback,Looper.getMainLooper());
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+    }
+
+    // Stop updates when no longer needed
+    private void stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback);
+    }
+
+
+
+
+
+    private void fetchLocationAndSetAddress() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        Location location = task.getResult();
+                        double latitude = location.getLatitude();
+                        double longitude = location.getLongitude();
+
+                        // Save coordinates to geoCoordinates
+                        geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+
+                    } else {
+                        // If location is unavailable, set a default value
+                        geoCoordinates = "Unavailable";
+                        Toast.makeText(requireContext(), "Unable to fetch location. Coordinates set as 'Unavailable'", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        } else {
+            // Request location permission using the launcher
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+    }
+
+
+
 }

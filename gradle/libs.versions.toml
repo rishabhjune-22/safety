@@ -11,6 +11,8 @@ firebaseAuth = "23.0.0"
 firebaseFirestore = "25.1.0"
 firebaseDatabase = "21.0.0"
 gridlayout = "1.0.0"
+playServicesLocation = "21.3.0"
+core = "1.13.0"
 
 [libraries]
 firebase-storage = { module = "com.google.firebase:firebase-storage" }
@@ -25,6 +27,8 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 gridlayout = { group = "androidx.gridlayout", name = "gridlayout", version.ref = "gridlayout" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+core = { group = "androidx.core", name = "core", version.ref = "core" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

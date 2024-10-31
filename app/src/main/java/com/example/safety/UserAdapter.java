@@ -62,7 +62,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
                 .setText(fullName)
                 .setTextSize(15f)
                 .setTextColorResource(R.color.white)
-                .setBackgroundColorResource(R.color.TabSelected)
+                .setBackgroundColorResource(R.color.light_sky_blue)
                 .setArrowSize(20)
                 .setArrowOrientation(ArrowOrientation.BOTTOM)
                 .setArrowPosition(0.5f)
