@@ -176,6 +176,7 @@ public class EmployeeFragment extends Fragment {
         intent.putExtra("name", preferences.getString(KEY_USER_NAME, ""));
         intent.putExtra("profileImageUrl", preferences.getString(KEY_PROFILE_IMAGE_URL, ""));
         intent.putExtra("email", preferences.getString(KEY_EMAIL, ""));
+        intent.putExtra("userId", preferences.getString(KEY_USER_ID, ""));
 
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

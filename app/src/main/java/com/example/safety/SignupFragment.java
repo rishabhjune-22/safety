@@ -5,10 +5,13 @@ import com.google.android.gms.location.LocationRequest;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.LocationManager;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -20,6 +23,7 @@ import androidx.fragment.app.Fragment;
 
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -117,7 +121,7 @@ public class SignupFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private View view;
-    private EditText  name,email,password,confirm_password,mobile,address,dob;
+    private EditText name, email, password, confirm_password, mobile, address, dob;
     private TextView back_to_login;
     private AppCompatButton sign_expand_btn;
     private ProgressBar progressBar;
@@ -126,9 +130,10 @@ public class SignupFragment extends Fragment {
     private FloatingActionButton btn;
     private Uri photoUri;
     private FusedLocationProviderClient fusedLocationClient;
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    //private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private FirebaseFirestore db;
-    private String geoCoordinates ;
+    private String geoCoordinates="";
+ //   private boolean isGPSEnable=false;
 
 
     // TODO: Rename and change types of parameters
@@ -168,6 +173,7 @@ public class SignupFragment extends Fragment {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
 
     }
+
     private final ActivityResultLauncher<String> locationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
@@ -177,12 +183,11 @@ public class SignupFragment extends Fragment {
                 } else {
                     // Permission denied, show a message
                     Toast.makeText(requireContext(), "Location permission denied.", Toast.LENGTH_SHORT).show();
-
+showLocationPermissionDialog();
 
                 }
             }
     );
-
 
 
     ActivityResultLauncher<Intent> cropImageResultLauncher = registerForActivityResult(
@@ -191,7 +196,7 @@ public class SignupFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     final Uri resultUri = UCrop.getOutput(result.getData());
                     if (resultUri != null) {
-                        photoUri=resultUri;
+                        photoUri = resultUri;
                         profileImage.setImageURI(resultUri);
                     } else {
                         Toast.makeText(requireContext(), "Cropping failed", Toast.LENGTH_SHORT).show();
@@ -208,7 +213,7 @@ public class SignupFragment extends Fragment {
                     cropPhoto(uri);
 
                 } else {
-                    Toast.makeText(requireContext(),"No Image Selected", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), "No Image Selected", Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -267,8 +272,6 @@ public class SignupFragment extends Fragment {
             });
 
 
-
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -299,7 +302,7 @@ public class SignupFragment extends Fragment {
         back_to_login.setOnClickListener(v -> switchToLoginFragment());
         dob.setOnClickListener(v -> showDatePickerDialog());
 
-        fetchContinuousLocationUpdates();
+        //fetchContinuousLocationUpdates();
 
 
         sign_expand_btn.setOnClickListener(v -> {
@@ -311,17 +314,30 @@ public class SignupFragment extends Fragment {
             String dob_txt = dob.getText().toString().trim();
             String address_txt = address.getText().toString().trim();
 
-            fetchLocationAndSetAddress();
+
 
             Map<String, Object> userData = new HashMap<>();
-            userData.put("name", name_txt); userData.put("email", email_txt); userData.put("mobile", mobile_txt);; userData.put("dob", dob_txt); userData.put("password", password_txt); userData.put("confirmPassword", confirm_password_txt);userData.put("address", address_txt);
+            userData.put("name", name_txt);
+            userData.put("email", email_txt);
+            userData.put("mobile", mobile_txt);
+            ;
+            userData.put("dob", dob_txt);
+            userData.put("password", password_txt);
+            userData.put("confirmPassword", confirm_password_txt);
+            userData.put("address", address_txt);
 
             // Validate input fields
             if (!validateInputFields(userData)) {
                 return; // Stop the execution if validation fails
             }
 
-            // First, check if the email or mobile already exists
+            if (!checkGps())
+            {
+                //Toast.makeText(requireContext(), "Please enable GPS", Toast.LENGTH_SHORT).show();
+                return;
+
+            }
+            fetchLocationAndSetAddress();
             checkAccountExists(userData);
         });
 
@@ -349,8 +365,6 @@ public class SignupFragment extends Fragment {
         });
 
 
-
-
         return view;
 
     }
@@ -362,6 +376,7 @@ public class SignupFragment extends Fragment {
         fragmentTransaction.addToBackStack(null); // Add to back stack for navigation
         fragmentTransaction.commit();
     }
+
     private boolean validateInputFields(Map<String, Object> userData) {
 
 
@@ -390,7 +405,7 @@ public class SignupFragment extends Fragment {
             return false;
         }
 
-        if ( Objects.requireNonNull(userData.get("dob")).toString().isEmpty()) {
+        if (Objects.requireNonNull(userData.get("dob")).toString().isEmpty()) {
             Toast.makeText(requireContext(), "Please select your date of birth", Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -441,14 +456,17 @@ public class SignupFragment extends Fragment {
             return;
         }
 
-        if (geoCoordinates == null || geoCoordinates.equals("Unavailable")) {
+        if (Objects.equals(geoCoordinates, "")) {
+
+            Log.e("geocoorinates",geoCoordinates);
             Toast.makeText(requireContext(), "Location not available. Please enable location and try again.", Toast.LENGTH_SHORT).show();
             progressBar.setVisibility(View.GONE);
             sign_expand_btn.setEnabled(true);
+            //showLocationPermissionDialog();
             return; // Stop execution here
         }
 
-        userData.put("geoCoordinates",geoCoordinates);
+        userData.put("geoCoordinates", geoCoordinates);
         // Now, create Firebase Authentication account after checking Firestore
         mAuth.createUserWithEmailAndPassword(Objects.requireNonNull(userData.get("email")).toString(), Objects.requireNonNull(userData.get("password")).toString())
                 .addOnCompleteListener(task -> {
@@ -505,6 +523,7 @@ public class SignupFragment extends Fragment {
                     sign_expand_btn.setEnabled(true);
                 });
     }
+
     // Helper methods for validation
     public boolean isValidEmail(String email) {
         String emailPattern = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -551,93 +570,137 @@ public class SignupFragment extends Fragment {
         datePickerDialog.show();
     }
 
-    private final LocationCallback locationCallback = new LocationCallback() {
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            if (locationResult == null) {
-                geoCoordinates = "Unavailable";
-                Toast.makeText(requireContext(), "Unable to fetch location continuously", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            for (Location location : locationResult.getLocations()) {
-                double latitude = location.getLatitude();
-                double longitude = location.getLongitude();
+//    private final LocationCallback locationCallback = new LocationCallback() {
+//        @Override
+//        public void onLocationResult(LocationResult locationResult) {
+//            if (locationResult == null) {
+//                geoCoordinates = "Unavailable";
+//                Toast.makeText(requireContext(), "Unable to fetch location continuously", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            for (Location location : locationResult.getLocations()) {
+//                double latitude = location.getLatitude();
+//                double longitude = location.getLongitude();
+//
+//                geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+//                Geocoder geocoder = new Geocoder(requireContext());
+//                try {
+//
+//                    List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
+//                    if (addresses != null && !addresses.isEmpty()) {
+//                        Address address = addresses.get(0);
+//                        String tempadd = address.getAddressLine(0);
+//                        Log.d("geocode", tempadd);
+//                    }
+//
+//                }
+//                catch (Exception e){
+//
+//                    Log.d("geocode error", e.getMessage());
+//                }
+//
+//                // Log the latitude and longitude
+//                Log.d("LocationUpdate", "Latitude: " + latitude + ", Longitude: " + longitude);
+//            }
+//        }
+//    };
 
-                geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
-                Geocoder geocoder = new Geocoder(requireContext());
-                try {
 
-                    List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
-                    if (addresses != null && !addresses.isEmpty()) {
-                        Address address = addresses.get(0);
-                        String tempadd = address.getAddressLine(0);
-                        Log.d("geocode", tempadd);
-                    }
-
-                }
-                catch (Exception e){
-
-                    Log.d("geocode error", e.getMessage());
-                }
-
-                // Log the latitude and longitude
-                Log.d("LocationUpdate", "Latitude: " + latitude + ", Longitude: " + longitude);
-            }
-        }
-    };
-
-
-    private void fetchContinuousLocationUpdates() {
-        LocationRequest locationRequest = new LocationRequest.Builder(
-                Priority.PRIORITY_HIGH_ACCURACY, // Priority level
-                10000 // 10 seconds interval for updates
-        )
-                .setMinUpdateIntervalMillis(5000) // Minimum interval between updates
-                .setMaxUpdateDelayMillis(15000) // Maximum delay if updates are delayed
-                .build(); // Minimum interval between updates
-
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback,Looper.getMainLooper());
-        } else {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
-        }
-    }
+//    private void fetchContinuousLocationUpdates() {
+//        LocationRequest locationRequest = new LocationRequest.Builder(
+//                Priority.PRIORITY_HIGH_ACCURACY, // Priority level
+//                10000 // 10 seconds interval for updates
+//        )
+//                .setMinUpdateIntervalMillis(5000) // Minimum interval between updates
+//                .setMaxUpdateDelayMillis(15000) // Maximum delay if updates are delayed
+//                .build(); // Minimum interval between updates
+//
+//        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+//            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback,Looper.getMainLooper());
+//        } else {
+//            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+//        }
+//    }
 
     // Stop updates when no longer needed
-    private void stopLocationUpdates() {
-        fusedLocationClient.removeLocationUpdates(locationCallback);
-    }
-
-
-
+//    private void stopLocationUpdates() {
+//        fusedLocationClient.removeLocationUpdates(locationCallback);
+//    }
 
 
     private void fetchLocationAndSetAddress() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
-                @Override
-                public void onComplete(@NonNull Task<Location> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        Location location = task.getResult();
-                        double latitude = location.getLatitude();
-                        double longitude = location.getLongitude();
+            Log.d("if ","if first");
+            fusedLocationClient.getLastLocation().addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    Location location = task.getResult();
+                    double latitude = location.getLatitude();
+                    double longitude = location.getLongitude();
+                    Log.d("if","if second");
+                    // Save coordinates to geoCoordinates
+                    geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+                    Log.d("geocoordinate","first geocoordinate"+geoCoordinates);
 
-                        // Save coordinates to geoCoordinates
-                        geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
-
-                    } else {
-                        // If location is unavailable, set a default value
-                        geoCoordinates = "Unavailable";
-                        Toast.makeText(requireContext(), "Unable to fetch location. Coordinates set as 'Unavailable'", Toast.LENGTH_SHORT).show();
-                    }
                 }
+
+//                else {
+//                    // If location is unavailable, set a default value
+//                    geoCoordinates = "Unavailable";
+//
+//                    Log.d("else","else first");
+//                    showLocationPermissionDialog();
+//                    //Toast.makeText(requireContext(), "Unable to fetch location. Coordinates set as 'Unavailable'", Toast.LENGTH_SHORT).show();
+//                }
             });
         } else {
             // Request location permission using the launcher
+            Log.d("else","else second");
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+
+
         }
     }
 
+    private void showLocationPermissionDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Location Permission Needed");
+        builder.setMessage("This app requires location access to provide location-based services. Please allow access.");
+
+        // Set positive button to request permission
+//        builder.setPositiveButton("Allow", (dialog, which) -> {
+//            // Request permission
+//            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+//        });
+
+        // Set negative button to open app settings
+        builder.setNegativeButton("Settings", (dialog, which) -> {
+            // Open app settings to allow user to manually enable the permission
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            Uri uri = Uri.fromParts("package", requireActivity().getPackageName(), null);
+            intent.setData(uri);
+            startActivity(intent);
+        });
+
+        // Set cancel button
+        builder.setNeutralButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        builder.create().show();
 
 
+    }
+
+    public boolean checkGps() {
+        LocationManager locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager != null &&
+                (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
+                        !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))) {
+
+            Toast.makeText(requireContext(), "Location is turned off. Please enable it in settings.", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+            return false;
+        } else {
+            //Toast.makeText(requireContext(), "Location is already enabled.", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+    }
 }
