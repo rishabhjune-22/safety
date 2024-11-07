@@ -1,4 +1,5 @@
 package com.example.safety;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import android.os.Bundle;
 import android.text.Editable;
@@ -32,7 +33,8 @@ public class trackemployee extends AppCompatActivity {
     private UserAdapter userAdapter;
     private List<User> userList;
     private TextInputEditText searchEditText;
-
+    private FirebaseFirestore db;
+    private ListenerRegistration listenerRegistration;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,7 +56,7 @@ public class trackemployee extends AppCompatActivity {
         userList = new ArrayList<>();
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-
+        db = FirebaseFirestore.getInstance();
         // Fetch users from Firestore and set up the adapter
         fetchUsersFromFirestore();
 
@@ -77,38 +79,39 @@ public class trackemployee extends AppCompatActivity {
 
     private void fetchUsersFromFirestore() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("users")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        QuerySnapshot querySnapshot = task.getResult();
-                        if (querySnapshot != null) {
-                            userList.clear();
-                            for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                                User user = document.toObject(User.class);
-                                if (user != null) {
-                                    user.setLastSeen(document.getString("last_seen"));
-                                    userList.add(user);
-                                }
-                            }
-                            Log.d(TAG, "fetchUsersFromFirestore: Loaded " + userList.size() + " users.");
+        listenerRegistration = db.collection("users")
+                .addSnapshotListener((querySnapshot, e) -> {
+                    if (e != null) {
+                        Log.e(TAG, "Listen failed: ", e);
+                        return;
+                    }
 
-                            // Initialize the adapter after data is loaded, or update if already initialized
-                            if (userAdapter == null) {
-                                userAdapter = new UserAdapter(this, userList);
-                                recyclerView.setAdapter(userAdapter);
-                            } else {
-                                userAdapter.updateUserList(userList);
+                    if (querySnapshot != null) {
+                        List<User> newUserList = new ArrayList<>();
+                        for (DocumentSnapshot document : querySnapshot.getDocuments()) {
+                            User user = document.toObject(User.class);
+                            if (user != null) {
+                                user.setLastSeen(document.getString("last_seen"));
+                                newUserList.add(user);
                             }
                         }
-                    } else {
-                        Toast.makeText(this, "Failed to fetch users", Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "Error fetching users: ", task.getException());
+                        // Update the adapter with the new user list
+                        if (userAdapter == null) {
+                            userAdapter = new UserAdapter(this, newUserList);
+                            recyclerView.setAdapter(userAdapter);
+                        } else {
+                            userAdapter.updateUserList(newUserList);
+                        }
                     }
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Error fetching users: ", e);
                 });
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (listenerRegistration != null) {
+            listenerRegistration.remove(); // Stop listening for updates when the activity is destroyed
+        }
     }
 }

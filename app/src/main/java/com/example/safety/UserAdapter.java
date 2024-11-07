@@ -1,6 +1,9 @@
 package com.example.safety;
+
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
-import java.util.List;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
@@ -11,11 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.Date;
-import java.text.SimpleDateFormat;
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -24,24 +22,25 @@ import com.skydoves.balloon.Balloon;
 import com.skydoves.balloon.BalloonAnimation;
 import com.skydoves.balloon.ArrowOrientation;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
 
-    private static final String TAG = "UserAdapter"; // Tag for logging
-
+    private static final String TAG = "UserAdapter";
     private final Context context;
-    private final List<User> userList;
-    private List<User> filteredList;
+    private final List<User> userList; // Original user list
+    private List<User> filteredList; // Filtered list for searching
 
     public UserAdapter(Context context, List<User> userList) {
         this.context = context;
         this.userList = userList;
-        this.filteredList = new ArrayList<>(userList);  // Initialize filteredList with userList
-        Log.d(TAG, "Constructor: userList size = " + userList.size());
-        Log.d(TAG, "Constructor: filteredList initialized with size = " + filteredList.size());
+        this.filteredList = new ArrayList<>(userList);
     }
 
     @NonNull
@@ -57,15 +56,15 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         User user = filteredList.get(position);
 
         String fullName = user.getName();
-        String lastSeen = user.getLastSeen();
-        Log.d(TAG, "User last_seen: " + lastSeen);
-        holder.lastseen.setText(lastSeen != null ? lastSeen : "N/A");
+        String lastSeenString = user.getLastSeen();
+        Log.d(TAG, "User last_seen: " + lastSeenString);
+        String formattedLastSeen = formatLastSeen(parseDate(lastSeenString));
+        holder.lastseen.setText(formattedLastSeen != null ? formattedLastSeen : "N/A");
 
         String truncatedName = (fullName != null && fullName.length() > 7)
                 ? fullName.substring(0, 7) + "..."
                 : (fullName != null ? fullName : "Unknown");
 
-// Provide a default text if fullName is null
         Balloon balloon = new Balloon.Builder(context)
                 .setText(fullName != null ? fullName : "No Name Available")
                 .setTextSize(15f)
@@ -109,21 +108,51 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
                 .into(holder.profileImage);
     }
 
+    private Date parseDate(String dateString) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
+        try {
+            return dateFormat.parse(dateString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private String formatLastSeen(Date lastSeenDate) {
+        if (lastSeenDate == null) return null;
+
+        Calendar lastSeenCalendar = Calendar.getInstance();
+        lastSeenCalendar.setTime(lastSeenDate);
+
+        Calendar today = Calendar.getInstance();
+        SimpleDateFormat timeFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+
+        if (today.get(Calendar.YEAR) == lastSeenCalendar.get(Calendar.YEAR)) {
+            if (today.get(Calendar.DAY_OF_YEAR) == lastSeenCalendar.get(Calendar.DAY_OF_YEAR)) {
+                return "Last seen today at " + timeFormat.format(lastSeenDate);
+            } else if (today.get(Calendar.DAY_OF_YEAR) - lastSeenCalendar.get(Calendar.DAY_OF_YEAR) == 1) {
+                return "Last seen yesterday at " + timeFormat.format(lastSeenDate);
+            }
+        }
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d 'at' hh:mm a", Locale.getDefault());
+        return "Last seen " + dateFormat.format(lastSeenDate);
+    }
+
+
     @Override
     public int getItemCount() {
-        Log.d(TAG, "getItemCount: filteredList size = " + filteredList.size());
         return filteredList.size();
     }
 
     public static class UserViewHolder extends RecyclerView.ViewHolder {
-        TextView userName,lastseen;
+        TextView userName, lastseen;
         ShapeableImageView profileImage;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             userName = itemView.findViewById(R.id.user_name);
             profileImage = itemView.findViewById(R.id.profile_image);
-            lastseen=itemView.findViewById(R.id.last_seen);
+            lastseen = itemView.findViewById(R.id.last_seen);
         }
     }
 
@@ -153,46 +182,56 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         Log.d(TAG, "filter: Filtered list size after filtering = " + filteredList.size());
     }
 
-    // Inside UserAdapter.java
+    // Method to update the user list using DiffUtil
     public void updateUserList(List<User> newUserList) {
+        UserDiffCallback diffCallback = new UserDiffCallback(this.filteredList, newUserList);
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(diffCallback);
+
         this.userList.clear();
         this.userList.addAll(newUserList);
         this.filteredList.clear();
         this.filteredList.addAll(newUserList);
-        notifyDataSetChanged();
+
+        diffResult.dispatchUpdatesTo(this);
     }
 
+    // Static inner class for UserDiffCallback
+    private static class UserDiffCallback extends DiffUtil.Callback {
 
-}
-class UserDiffCallback extends DiffUtil.Callback {
+        private final List<User> oldList;
+        private final List<User> newList;
 
-    private final List<User> oldList;
-    private final List<User> newList;
+        public UserDiffCallback(List<User> oldList, List<User> newList) {
+            this.oldList = oldList;
+            this.newList = newList;
+        }
 
-    public UserDiffCallback(List<User> oldList, List<User> newList) {
-        this.oldList = oldList;
-        this.newList = newList;
-    }
+        @Override
+        public int getOldListSize() {
+            return oldList.size();
+        }
 
-    @Override
-    public int getOldListSize() {
-        return oldList.size();
-    }
+        @Override
+        public int getNewListSize() {
+            return newList.size();
+        }
 
-    @Override
-    public int getNewListSize() {
-        return newList.size();
-    }
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            // Assuming User has a unique name or ID
+            return oldList.get(oldItemPosition).getName().equals(newList.get(newItemPosition).getName());
+        }
 
-    @Override
-    public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-        // Assuming User has a unique name or ID
-        return oldList.get(oldItemPosition).getName().equals(newList.get(newItemPosition).getName());
-    }
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            User oldUser = oldList.get(oldItemPosition);
+            User newUser = newList.get(newItemPosition);
 
-    @Override
-    public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-        return oldList.get(oldItemPosition).equals(newList.get(newItemPosition));
+            // Compare the contents of each user to see if they are the same
+            return oldUser.getName().equals(newUser.getName()) &&
+                    oldUser.getProfileImageUrl().equals(newUser.getProfileImageUrl()) &&
+                    oldUser.getLastSeen().equals(newUser.getLastSeen());
+        }
     }
 
 
