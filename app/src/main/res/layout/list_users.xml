@@ -46,18 +46,25 @@
                 android:id="@+id/emp_id"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14sp"
                 android:text="2024-0001"
-                android:textColor="@color/LoginBtn"/>
+                android:textColor="@color/LoginBtn"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/last_seen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@color/LoginBtn"
+                android:textSize="14sp" />
         </LinearLayout>
 
         <!-- Greeting text container with multiple TextViews -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal"
+            android:layout_height="156dp"
             android:gravity="center"
-            >
+            android:orientation="horizontal">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="0dp"
@@ -106,8 +113,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
-                    android:textColor="@color/green"
                     android:text="time"
+                    android:textColor="@color/green"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
                     app:layout_constraintStart_toEndOf="@+id/textView4"

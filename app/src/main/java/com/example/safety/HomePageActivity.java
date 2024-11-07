@@ -30,7 +30,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class HomePageActivity extends AppCompatActivity {
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 2001;
+
 
     Toolbar toolbar;
     DrawerLayout drawerLayout;
@@ -81,7 +81,7 @@ public class HomePageActivity extends AppCompatActivity {
         name_txt = getIntent().getStringExtra("name") != null ? getIntent().getStringExtra("name") : "User";
         profileImageUrl = getIntent().getStringExtra("profileImageUrl") != null ? getIntent().getStringExtra("profileImageUrl") : "";
         email_txt = getIntent().getStringExtra("email") != null ? getIntent().getStringExtra("email") : "";
-        userID = getIntent().getStringExtra("userId") != null ? getIntent().getStringExtra("userId") : "";
+        //userID = getIntent().getStringExtra("userId") != null ? getIntent().getStringExtra("userId") : "";
 
         navigationView = findViewById(R.id.nav_view);
         headerView = navigationView.getHeaderView(0);
@@ -124,6 +124,8 @@ public class HomePageActivity extends AppCompatActivity {
     }
 
     private void logOut() {
+        Intent stopServiceIntent = new Intent(this, LocationService.class);
+        stopService(stopServiceIntent);
         SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.clear();
@@ -157,12 +159,22 @@ public class HomePageActivity extends AppCompatActivity {
     }
 
     private void startLocationService() {
-        Intent serviceIntent = new Intent(this, LocationService.class);
-        serviceIntent.putExtra("geoCoordinates",userID );
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
+        if (hasLocationPermissions()) { // Check for permissions before starting the service
+            Intent serviceIntent = new Intent(this, LocationService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
         } else {
-            startService(serviceIntent);
+            Toast.makeText(this, "Location permissions are required to start the service.", Toast.LENGTH_SHORT).show();
         }
     }
+    private boolean hasLocationPermissions() {
+        return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+                        ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED);
+    }
+
+
 }

@@ -14,7 +14,9 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import com.google.android.gms.location.Priority;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentReference;
 import androidx.annotation.NonNull;
@@ -32,6 +34,8 @@ import com.google.type.LatLng;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
 public class LocationService extends Service {
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
@@ -87,10 +91,10 @@ public class LocationService extends Service {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setInterval(5000); // 5 seconds
-            locationRequest.setFastestInterval(5000); // 5 seconds
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            // Create LocationRequest using the new Builder pattern
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000 ) // 5 minutes interval
+                    .setMinUpdateIntervalMillis(5000) // 5 seconds for the fastest interval
+                    .build();
 
             try {
                 Log.d("LocationService", "Requesting location updates...");
@@ -109,13 +113,23 @@ public class LocationService extends Service {
 
 
 
+
     private void updateLocationInFirebase(Location location) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String employeeId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        if (employeeId == null) {
-            Log.e("LocationService", "Employee ID is null. Cannot update location in Firestore.");
-            return;
+        // Check if the user is logged in
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Log.e("LocationService", "No user is currently logged in.");
+            return; // Exit the method if there is no logged-in user
+        }
+
+        String employeeId = ((FirebaseUser) currentUser).getUid();
+
+        // Ensure the location is not null
+        if (location == null) {
+            Log.e("LocationService", "Location is null. Cannot update in Firestore.");
+            return; // Exit the method if location is null
         }
 
         // Document path in Firestore (e.g., "users/{employeeId}")
@@ -131,6 +145,7 @@ public class LocationService extends Service {
     }
 
 
+
 //    private String getEmployeeId() {
 //        // Placeholder for employee ID retrieval logic
 //        return "n2GMGAcq71WuDbu3wiorMpc71y52"; // Replace with dynamic retrieval logic
@@ -139,8 +154,13 @@ public class LocationService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        fusedLocationClient.removeLocationUpdates(locationCallback);
+        // Stop location updates to save resources
+        if (fusedLocationClient != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+        Log.d("LocationService", "Location tracking stopped.");
     }
+
 
     @Override
     public IBinder onBind(Intent intent) {

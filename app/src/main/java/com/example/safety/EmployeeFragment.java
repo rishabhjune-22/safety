@@ -40,6 +40,8 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.PersistentCacheSettings;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -80,7 +82,11 @@ public class EmployeeFragment extends Fragment {
             launchHomePage();
         }
 
+        FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build()) // Enables persistent caching
+                .build();
 
+        FirebaseFirestore.getInstance().setFirestoreSettings(settings);
         loginButton.setOnClickListener(v -> {
             String emailText = email.getText().toString().trim();
 

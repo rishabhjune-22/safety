@@ -87,6 +87,7 @@ public class trackemployee extends AppCompatActivity {
                             for (DocumentSnapshot document : querySnapshot.getDocuments()) {
                                 User user = document.toObject(User.class);
                                 if (user != null) {
+                                    user.setLastSeen(document.getString("last_seen"));
                                     userList.add(user);
                                 }
                             }

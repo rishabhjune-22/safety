@@ -132,7 +132,8 @@ public class SignupFragment extends Fragment {
     private FusedLocationProviderClient fusedLocationClient;
     //private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private FirebaseFirestore db;
-    private String geoCoordinates="";
+    private String homegeoCoordinates="";
+    private String androidId;
  //   private boolean isGPSEnable=false;
 
 
@@ -302,7 +303,7 @@ showLocationPermissionDialog();
         back_to_login.setOnClickListener(v -> switchToLoginFragment());
         dob.setOnClickListener(v -> showDatePickerDialog());
 
-        //fetchContinuousLocationUpdates();
+
 
 
         sign_expand_btn.setOnClickListener(v -> {
@@ -313,6 +314,7 @@ showLocationPermissionDialog();
             String mobile_txt = mobile.getText().toString().trim();
             String dob_txt = dob.getText().toString().trim();
             String address_txt = address.getText().toString().trim();
+            androidId = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
 
 
 
@@ -325,6 +327,8 @@ showLocationPermissionDialog();
             userData.put("password", password_txt);
             userData.put("confirmPassword", confirm_password_txt);
             userData.put("address", address_txt);
+            userData.put("unique_mobile_id",androidId);
+
 
             // Validate input fields
             if (!validateInputFields(userData)) {
@@ -456,9 +460,9 @@ showLocationPermissionDialog();
             return;
         }
 
-        if (Objects.equals(geoCoordinates, "")) {
+        if (Objects.equals(homegeoCoordinates, "")) {
 
-            Log.e("geocoorinates",geoCoordinates);
+            Log.e("homegeoCoordinates",homegeoCoordinates);
             Toast.makeText(requireContext(), "Location not available. Please enable location and try again.", Toast.LENGTH_SHORT).show();
             progressBar.setVisibility(View.GONE);
             sign_expand_btn.setEnabled(true);
@@ -466,7 +470,7 @@ showLocationPermissionDialog();
             return; // Stop execution here
         }
 
-        userData.put("geoCoordinates", geoCoordinates);
+        userData.put("homegeoCoordinates", homegeoCoordinates);
         // Now, create Firebase Authentication account after checking Firestore
         mAuth.createUserWithEmailAndPassword(Objects.requireNonNull(userData.get("email")).toString(), Objects.requireNonNull(userData.get("password")).toString())
                 .addOnCompleteListener(task -> {
@@ -638,8 +642,8 @@ showLocationPermissionDialog();
                     double longitude = location.getLongitude();
                     Log.d("if","if second");
                     // Save coordinates to geoCoordinates
-                    geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
-                    Log.d("geocoordinate","first geocoordinate"+geoCoordinates);
+                    homegeoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+                    Log.d("geocoordinate","first geocoordinate"+homegeoCoordinates);
 
                 }
 

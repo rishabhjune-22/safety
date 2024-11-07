@@ -11,7 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import java.util.Date;
+import java.text.SimpleDateFormat;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,6 +26,7 @@ import com.skydoves.balloon.ArrowOrientation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
 
@@ -55,11 +57,17 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         User user = filteredList.get(position);
 
         String fullName = user.getName();
-        String truncatedName = fullName.length() > 7 ? fullName.substring(0, 7) + "..." : fullName;
+        String lastSeen = user.getLastSeen();
+        Log.d(TAG, "User last_seen: " + lastSeen);
+        holder.lastseen.setText(lastSeen != null ? lastSeen : "N/A");
 
-        // Set up the tooltip using Balloon
+        String truncatedName = (fullName != null && fullName.length() > 7)
+                ? fullName.substring(0, 7) + "..."
+                : (fullName != null ? fullName : "Unknown");
+
+// Provide a default text if fullName is null
         Balloon balloon = new Balloon.Builder(context)
-                .setText(fullName)
+                .setText(fullName != null ? fullName : "No Name Available")
                 .setTextSize(15f)
                 .setTextColorResource(R.color.white)
                 .setBackgroundColorResource(R.color.light_sky_blue)
@@ -108,13 +116,14 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
     }
 
     public static class UserViewHolder extends RecyclerView.ViewHolder {
-        TextView userName;
+        TextView userName,lastseen;
         ShapeableImageView profileImage;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             userName = itemView.findViewById(R.id.user_name);
             profileImage = itemView.findViewById(R.id.profile_image);
+            lastseen=itemView.findViewById(R.id.last_seen);
         }
     }
 
