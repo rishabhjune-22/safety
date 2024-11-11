@@ -55,18 +55,22 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         User user = filteredList.get(position);
 
-        String fullName = user.getName();
+        // Fetch user details and check for null
+        String fullName = user.getName() != null ? user.getName() : "Unknown";
         String lastSeenString = user.getLastSeen();
         Log.d(TAG, "User last_seen: " + lastSeenString);
-        String formattedLastSeen = formatLastSeen(parseDate(lastSeenString));
-        holder.lastseen.setText(formattedLastSeen != null ? formattedLastSeen : "N/A");
 
-        String truncatedName = (fullName != null && fullName.length() > 7)
-                ? fullName.substring(0, 7) + "..."
-                : (fullName != null ? fullName : "Unknown");
+        // Parse lastSeen date and format it, with a fallback to "N/A"
+        Date lastSeenDate = parseDate(lastSeenString);
+        String formattedLastSeen = lastSeenDate != null ? formatLastSeen(lastSeenDate) : "N/A";
+        holder.lastseen.setText(formattedLastSeen);
 
+        // Truncate name if it's too long
+        String truncatedName = fullName.length() > 20 ? fullName.substring(0, 7) + "..." : fullName;
+
+        // Initialize balloon tooltip with fallback text
         Balloon balloon = new Balloon.Builder(context)
-                .setText(fullName != null ? fullName : "No Name Available")
+                .setText(fullName)
                 .setTextSize(15f)
                 .setTextColorResource(R.color.white)
                 .setBackgroundColorResource(R.color.light_sky_blue)
@@ -82,6 +86,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
         holder.userName.setText(truncatedName);
 
+        // Set tooltip or Toast for displaying full name based on SDK version
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             holder.userName.setOnTouchListener((v, event) -> {
                 switch (event.getAction()) {
@@ -102,13 +107,21 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             });
         }
 
+        // Load profile image with Glide, with a placeholder in case of null URL
+        String profileImageUrl = user.getProfileImageUrl();
         Glide.with(context)
-                .load(user.getProfileImageUrl())
+                .load(profileImageUrl != null ? profileImageUrl : R.drawable.baseline_person_24)
                 .placeholder(R.drawable.baseline_person_24)
                 .into(holder.profileImage);
     }
 
+
     private Date parseDate(String dateString) {
+        if (dateString == null || dateString.isEmpty()) {
+            // Return null or handle the case when dateString is null or empty
+            return null;
+        }
+
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
         try {
             return dateFormat.parse(dateString);
@@ -117,6 +130,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             return null;
         }
     }
+
 
     private String formatLastSeen(Date lastSeenDate) {
         if (lastSeenDate == null) return null;
@@ -227,11 +241,24 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             User oldUser = oldList.get(oldItemPosition);
             User newUser = newList.get(newItemPosition);
 
-            // Compare the contents of each user to see if they are the same
-            return oldUser.getName().equals(newUser.getName()) &&
-                    oldUser.getProfileImageUrl().equals(newUser.getProfileImageUrl()) &&
-                    oldUser.getLastSeen().equals(newUser.getLastSeen());
+            // Check if oldUser or newUser is null
+            if (oldUser == null || newUser == null) {
+                return oldUser == newUser; // Only true if both are null
+            }
+
+            // Safely compare each field with null checks
+            boolean isNameSame = (oldUser.getName() != null && oldUser.getName().equals(newUser.getName())) ||
+                    (oldUser.getName() == null && newUser.getName() == null);
+
+            boolean isProfileImageUrlSame = (oldUser.getProfileImageUrl() != null && oldUser.getProfileImageUrl().equals(newUser.getProfileImageUrl())) ||
+                    (oldUser.getProfileImageUrl() == null && newUser.getProfileImageUrl() == null);
+
+            boolean isLastSeenSame = (oldUser.getLastSeen() != null && oldUser.getLastSeen().equals(newUser.getLastSeen())) ||
+                    (oldUser.getLastSeen() == null && newUser.getLastSeen() == null);
+
+            return isNameSame && isProfileImageUrlSame && isLastSeenSame;
         }
+
     }
 
 

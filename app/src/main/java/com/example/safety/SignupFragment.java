@@ -1,27 +1,21 @@
 package com.example.safety;
 
-import static android.app.Activity.RESULT_OK;
-import com.google.android.gms.location.LocationRequest;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
+
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.location.Address;
-import android.location.Geocoder;
+
 import android.location.LocationManager;
 import android.os.Bundle;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+
 import androidx.appcompat.widget.AppCompatButton;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
-import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.LayoutInflater;
@@ -38,13 +32,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import android.app.DatePickerDialog;
 
-import com.canhub.cropper.CropImage;
-import com.canhub.cropper.CropImageContract;
-import com.canhub.cropper.CropImageContractOptions;
-import com.canhub.cropper.CropImageView;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.Priority;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import android.os.Bundle;
@@ -52,20 +40,16 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+
 import android.widget.Toast;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.AppCompatButton;
+
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -73,42 +57,25 @@ import com.yalantis.ucrop.UCrop;
 import android.Manifest;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.widget.Toast;
+
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.github.dhaval2404.imagepicker.ImagePicker;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.imageview.ShapeableImageView;
-import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.model.AspectRatio;
 
 import java.io.File;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import android.Manifest;
-import android.content.pm.PackageManager;
+
 import android.location.Location;
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
+
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link SignupFragment#newInstance} factory method to
@@ -121,7 +88,7 @@ public class SignupFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
     private View view;
-    private EditText name, email, password, confirm_password, mobile, address, dob;
+    private EditText name, email, password, confirm_password, mobile, address, dob,emp_id;
     private TextView back_to_login;
     private AppCompatButton sign_expand_btn;
     private ProgressBar progressBar;
@@ -293,6 +260,7 @@ showLocationPermissionDialog();
         sign_expand_btn = view.findViewById(R.id.sign_expand_btn);
         back_to_login = view.findViewById(R.id.back_to_login);
         progressBar = view.findViewById(R.id.progress_bar);
+        emp_id =view.findViewById(R.id.emp_id);
         String already_registered_text = getString(R.string.back_to_login);
         SpannableString spannableString = new SpannableString(already_registered_text);
         int color = ContextCompat.getColor(requireContext(), R.color.click_back_to_login);
@@ -314,6 +282,7 @@ showLocationPermissionDialog();
             String mobile_txt = mobile.getText().toString().trim();
             String dob_txt = dob.getText().toString().trim();
             String address_txt = address.getText().toString().trim();
+            String empid_txt=emp_id.getText().toString().trim();
             androidId = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
 
 
@@ -328,6 +297,7 @@ showLocationPermissionDialog();
             userData.put("confirmPassword", confirm_password_txt);
             userData.put("address", address_txt);
             userData.put("unique_mobile_id",androidId);
+            userData.put("emp_id",empid_txt);
 
 
             // Validate input fields
@@ -411,6 +381,11 @@ showLocationPermissionDialog();
 
         if (Objects.requireNonNull(userData.get("dob")).toString().isEmpty()) {
             Toast.makeText(requireContext(), "Please select your date of birth", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if(Objects.requireNonNull(userData.get("emp_id")).toString().isEmpty()||!isValidEmpID(Objects.requireNonNull(userData.get("emp_id")).toString()))
+        {
+            Toast.makeText(requireContext(), "Please enter valid Employee ID", Toast.LENGTH_SHORT).show();
             return false;
         }
 
@@ -549,6 +524,15 @@ showLocationPermissionDialog();
         Matcher matcher = pattern.matcher(mobile);
         return matcher.matches();
     }
+
+    public boolean isValidEmpID(String empid) {
+
+        String empidpattern = "^[0-9-]+$";
+        Pattern pattern = Pattern.compile(empidpattern);
+        Matcher matcher = pattern.matcher(empid);
+        return matcher.matches();
+    }
+
 
     public boolean isValidPassword(String password) {
         return password.length() >= 8;

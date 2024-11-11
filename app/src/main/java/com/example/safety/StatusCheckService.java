@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -18,6 +19,7 @@ import androidx.core.app.NotificationCompat;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.Query;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -80,19 +82,35 @@ public class StatusCheckService extends Service {
 
     private void updateStatusInFirebase(boolean isLocationEnabled) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String employeeId = "BE5cYPeqWiQurUwFN6qC0MwT0xi2"; // Replace or dynamically obtain the employee ID
-        DocumentReference docRef = db.collection("users").document(employeeId);
-        Date lastSeenDate = new Date();
-        String formattedDate = formatDate(lastSeenDate);
-        // Prepare fields to update
-        docRef.update("is_loc_enabled", isLocationEnabled, "last_seen", formattedDate)
-                .addOnSuccessListener(aVoid -> Log.d("StatusCheckService", "Status and last_seen updated in Firestore"))
-                .addOnFailureListener(e -> Log.e("StatusCheckService", "Failed to update Firestore", e));
+        String deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+
+        // Query Firestore for the document with the matching device ID
+        Query query = db.collection("users").whereEqualTo("unique_mobile_id", deviceId);
+        query.get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        // Get the document ID of the first matching result
+                        DocumentReference docRef = querySnapshot.getDocuments().get(0).getReference();
+
+                        // Prepare fields to update
+                        Date lastSeenDate = new Date();
+                        String formattedDate = formatDate(lastSeenDate);
+
+//                        docRef.update("is_loc_enabled", isLocationEnabled, "last_seen", formattedDate)
+//                                .addOnSuccessListener(aVoid -> Log.d("StatusCheckService", "Status and last_seen updated in Firestore"))
+//                                .addOnFailureListener(e -> Log.e("StatusCheckService", "Failed to update Firestore", e));
+                    } else {
+                        Log.e("StatusCheckService", "No document found with matching device_id"+"   "+deviceId);
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("StatusCheckService", "Error querying Firestore", e));
     }
+
     private String formatDate(Date date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
         return dateFormat.format(date);
     }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         return START_STICKY;

@@ -1,11 +1,21 @@
 package com.example.safety;
-import static android.content.Intent.getIntent;
+
+import static android.content.ContentValues.TAG;
+import static com.example.safety.AppConstants.GEOFENCE_RADIUS_IN_METERS;
+import static com.example.safety.AppConstants.HOME_GEOFENCE_ID;
+import static com.example.safety.AppConstants.HOME_LATITUDE;
+import static com.example.safety.AppConstants.HOME_LONGITUDE;
+import static com.example.safety.AppConstants.OFFICE_GEOFENCE_ID;
+import static com.example.safety.AppConstants.OFFICE_LATITUDE;
+import static com.example.safety.AppConstants.OFFICE_LONGITUDE;
 
 import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -14,12 +24,15 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingClient;
+import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.Priority;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentReference;
-import androidx.annotation.NonNull;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
@@ -28,29 +41,25 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.type.LatLng;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+
+import java.util.Arrays;
+
 
 public class LocationService extends Service {
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
-    String userID;
-
+    private GeofencingClient geofencingClient;
+    private PendingIntent geofencePendingIntent;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("LocationService", "Service started");
 
-       // userID = getIntent().getStringExtra("userId") != null ? getIntent().getStringExtra("userId") : "";
-
         // Initialize FusedLocationProviderClient
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        geofencingClient = LocationServices.getGeofencingClient(this);
 
         // Create a LocationCallback to receive location updates
         locationCallback = new LocationCallback() {
@@ -61,17 +70,59 @@ public class LocationService extends Service {
                         Log.d("LocationService", "Location received: " + location.getLatitude() + ", " + location.getLongitude());
                         updateLocationInFirebase(location);
                     }
+                } else {
+                    Log.d("LocationService", "No location received in location callback.");
                 }
             }
         };
 
         // Start location updates
         startLocationUpdates();
+        addGeofences();
 
         // Start the service as a foreground service
         startForeground(1, createNotification());
     }
 
+    private void addGeofences() {
+        Log.d(TAG, "Attempting to add geofences...");
+
+        Geofence homeGeofence = new Geofence.Builder()
+                .setRequestId(HOME_GEOFENCE_ID)
+                .setCircularRegion(HOME_LATITUDE, HOME_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .build();
+
+        Geofence officeGeofence = new Geofence.Builder()
+                .setRequestId(OFFICE_GEOFENCE_ID)
+                .setCircularRegion(OFFICE_LATITUDE, OFFICE_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .build();
+
+        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
+                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .addGeofences(Arrays.asList(homeGeofence, officeGeofence))
+                .build();
+
+        geofencePendingIntent = PendingIntent.getBroadcast(
+                this,
+                0,
+                new Intent(this, GeofenceBroadcastReceiver.class),
+                PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Location permissions are not granted. Cannot add geofences.");
+            return;
+        }
+
+        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Geofences added successfully"))
+                .addOnFailureListener(e -> Log.e(TAG, "Failed to add geofences", e));
+    }
 
     private Notification createNotification() {
         String channelId = "location_channel";
@@ -88,82 +139,64 @@ public class LocationService extends Service {
     }
 
     private void startLocationUpdates() {
+        Log.d("LocationService", "Attempting to start location updates...");
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-            // Create LocationRequest using the new Builder pattern
-            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000 ) // 5 minutes interval
-                    .setMinUpdateIntervalMillis(5000) // 5 seconds for the fastest interval
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+                    .setMinUpdateIntervalMillis(5000)
                     .build();
 
             try {
                 Log.d("LocationService", "Requesting location updates...");
                 fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
             } catch (SecurityException e) {
-                e.printStackTrace();
-                Log.e("LocationService", "SecurityException: Missing location permission");
+                Log.e("LocationService", "SecurityException: Missing location permission", e);
             }
-
         } else {
             Log.e("LocationService", "Permissions are not granted for location updates.");
             stopSelf();
         }
     }
 
-
-
-
-
     private void updateLocationInFirebase(Location location) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-        // Check if the user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+
         if (currentUser == null) {
             Log.e("LocationService", "No user is currently logged in.");
-            return; // Exit the method if there is no logged-in user
+            return;
         }
 
-        String employeeId = ((FirebaseUser) currentUser).getUid();
+        String employeeId = currentUser.getUid();
+        Log.d("LocationService", "Updating location in Firestore for employee ID: " + employeeId);
 
-        // Ensure the location is not null
         if (location == null) {
             Log.e("LocationService", "Location is null. Cannot update in Firestore.");
-            return; // Exit the method if location is null
+            return;
         }
 
-        // Document path in Firestore (e.g., "users/{employeeId}")
+        String geoCoordinates = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
         DocumentReference docRef = db.collection("users").document(employeeId);
 
-        // Prepare the geoCoordinates field as a single string
-        String geoCoordinates = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
-
-        // Update only the geoCoordinates field in Firestore
-        docRef.update("geoCoordinates", geoCoordinates)
-                .addOnSuccessListener(aVoid -> Log.d("LocationService", "Location updated in Firestore"))
-                .addOnFailureListener(e -> Log.e("LocationService", "Failed to update location in Firestore", e));
+//        docRef.update("geoCoordinates", geoCoordinates)
+//                .addOnSuccessListener(aVoid -> Log.d("LocationService", "Location updated in Firestore"))
+//                .addOnFailureListener(e -> Log.e("LocationService", "Failed to update location in Firestore", e));
     }
-
-
-
-//    private String getEmployeeId() {
-//        // Placeholder for employee ID retrieval logic
-//        return "n2GMGAcq71WuDbu3wiorMpc71y52"; // Replace with dynamic retrieval logic
-//    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // Stop location updates to save resources
-        if (fusedLocationClient != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
-        Log.d("LocationService", "Location tracking stopped.");
-    }
-
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (fusedLocationClient != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+        Log.d("LocationService", "Location tracking stopped.");
+    }
 }
+
