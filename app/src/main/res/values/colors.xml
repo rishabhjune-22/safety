@@ -21,6 +21,7 @@
     <color name="drawer_icon">#212121</color>
     <color name="drawer_background">#ECEFF1</color>
     <color name="camera_icon">#01092D</color>
+    <color name="dark_blue">#050A30</color>
     <color name="profile_header">#BEE3FF</color>
     <color name="back_to_login">#0005b2</color>
     <color name="light_gray">#D8DDDD</color>
@@ -32,6 +33,9 @@
     <color name="light_sky_blue">#2196F3</color>
 
     <color name="light_gray_2">#363636</color>
+
+    <color name="light_gray_3">#e4e4e4</color>
+    <color name="moderate_cyan">#40bad2</color>
 
 
 

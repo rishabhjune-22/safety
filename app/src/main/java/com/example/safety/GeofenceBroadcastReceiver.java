@@ -26,6 +26,7 @@ import com.google.firebase.firestore.DocumentReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 
 public class GeofenceBroadcastReceiver extends BroadcastReceiver {
     @Override
@@ -71,7 +72,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
 
         Log.d(TAG, "Geofence transition detected: " + geofenceTransition);
 
-        for (Geofence geofence : geofencingEvent.getTriggeringGeofences()) {
+        for (Geofence geofence : Objects.requireNonNull(geofencingEvent.getTriggeringGeofences())) {
             String requestId = geofence.getRequestId();
             Log.d(TAG, "Processing geofence with request ID: " + requestId);
 

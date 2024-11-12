@@ -100,9 +100,10 @@ public class trackemployee extends AppCompatActivity {
     private void applyFilter(String query) {
         List<User> filteredList = new ArrayList<>();
         for (User user : userList) {
-            if (user.getName().toLowerCase().contains(query.toLowerCase())) {
+            if (user.getName() != null && user.getName().toLowerCase().contains(query.toLowerCase())) {
                 filteredList.add(user);
             }
+
         }
 
         // Update the adapter with the filtered list

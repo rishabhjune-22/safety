@@ -95,10 +95,10 @@ public class StatusCheckService extends Service {
                         // Prepare fields to update
                         Date lastSeenDate = new Date();
                         String formattedDate = formatDate(lastSeenDate);
-
-//                        docRef.update("is_loc_enabled", isLocationEnabled, "last_seen", formattedDate)
-//                                .addOnSuccessListener(aVoid -> Log.d("StatusCheckService", "Status and last_seen updated in Firestore"))
-//                                .addOnFailureListener(e -> Log.e("StatusCheckService", "Failed to update Firestore", e));
+//docRef.update("is_loc_enabled", isLocationEnabled, "last_seen", formattedDate)
+                        docRef.update("is_loc_enabled", isLocationEnabled)
+                                .addOnSuccessListener(aVoid -> Log.d("StatusCheckService", "Status and last_seen updated in Firestore"))
+                                .addOnFailureListener(e -> Log.e("StatusCheckService", "Failed to update Firestore", e));
                     } else {
                         Log.e("StatusCheckService", "No document found with matching device_id"+"   "+deviceId);
                     }
