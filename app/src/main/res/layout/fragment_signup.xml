@@ -220,10 +220,11 @@
         app:layout_constraintEnd_toStartOf="@+id/guideline_end"
         app:layout_constraintStart_toStartOf="@+id/guideline_start"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout"
-        android:background="@color/SignUpBtn"
-        android:text="SignUp"
-        android:textAllCaps="false"
+        android:background="@color/green"
+        android:text="Sign Up"
+        android:textAllCaps="true"
         android:textSize="25sp"
+        android:textColor="@color/white"
         android:foreground="@drawable/signup_btn_click_ripple"
         />
 
@@ -232,7 +233,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="If already Registered, Click here"
-        android:textColor="#1016f6"
+        android:textColor="@color/blue"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/guideline_end"

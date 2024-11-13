@@ -42,9 +42,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
-
 import java.util.Arrays;
-
 
 public class LocationService extends Service {
     private FusedLocationProviderClient fusedLocationClient;
@@ -57,11 +55,9 @@ public class LocationService extends Service {
         super.onCreate();
         Log.d("LocationService", "Service started");
 
-        // Initialize FusedLocationProviderClient
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         geofencingClient = LocationServices.getGeofencingClient(this);
 
-        // Create a LocationCallback to receive location updates
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
@@ -76,11 +72,8 @@ public class LocationService extends Service {
             }
         };
 
-        // Start location updates
         startLocationUpdates();
         addGeofences();
-
-        // Start the service as a foreground service
         startForeground(1, createNotification());
     }
 
@@ -90,14 +83,14 @@ public class LocationService extends Service {
         Geofence homeGeofence = new Geofence.Builder()
                 .setRequestId(HOME_GEOFENCE_ID)
                 .setCircularRegion(HOME_LATITUDE, HOME_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();
 
         Geofence officeGeofence = new Geofence.Builder()
                 .setRequestId(OFFICE_GEOFENCE_ID)
                 .setCircularRegion(OFFICE_LATITUDE, OFFICE_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();
 
@@ -112,7 +105,6 @@ public class LocationService extends Service {
                 new Intent(this, GeofenceBroadcastReceiver.class),
                 PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
-
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Location permissions are not granted. Cannot add geofences.");
@@ -180,9 +172,9 @@ public class LocationService extends Service {
         String geoCoordinates = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
         DocumentReference docRef = db.collection("users").document(employeeId);
 
-//        docRef.update("geoCoordinates", geoCoordinates)
-//                .addOnSuccessListener(aVoid -> Log.d("LocationService", "Location updated in Firestore"))
-//                .addOnFailureListener(e -> Log.e("LocationService", "Failed to update location in Firestore", e));
+        docRef.update("geoCoordinates", geoCoordinates)
+                .addOnSuccessListener(aVoid -> Log.d("LocationService", "Location updated in Firestore"))
+                .addOnFailureListener(e -> Log.e("LocationService", "Failed to update location in Firestore", e));
     }
 
     @Override
@@ -204,4 +196,3 @@ public class LocationService extends Service {
         Log.d("LocationService", "Location tracking stopped.");
     }
 }
-

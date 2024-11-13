@@ -1,6 +1,7 @@
 package com.example.safety;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,10 +9,12 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -21,15 +24,11 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentManager;
 
 public class MainActivity extends AppCompatActivity {
-
-    private boolean askedForPermissions = false; // Flag to track if permissions were requested
-    private boolean redirectedToSettings = false; // Flag to track if settings page was already opened
-    private BroadcastReceiver statusReceiver; // BroadcastReceiver for GPS and internet status changes
-
-    private final ActivityResultLauncher<String> fineLocationPermissionLauncher = registerForActivityResult(
+    private final ActivityResultLauncher<String> locationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    checkBackgroundLocationPermission(); // Proceed to request background permission
+                    Toast.makeText(this, "Foreground Location permission granted. Checking for Background location permission.", Toast.LENGTH_SHORT).show();
+                    checkBackgroundLocationPermission();
                 } else {
                     Toast.makeText(this, "Location permission denied.", Toast.LENGTH_SHORT).show();
                 }
@@ -39,17 +38,43 @@ public class MainActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String> backgroundLocationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    startLocationService();
+                    Toast.makeText(this, "Background location permission granted.", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Background location permission denied.", Toast.LENGTH_SHORT).show();
                 }
             }
     );
 
+    private AlertDialog gpsDialog;
+    private TextView internetStatusBanner;
+
+    private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (LocationManager.PROVIDERS_CHANGED_ACTION.equals(intent.getAction())) {
+                if (!isGpsEnabled()) {
+                    showGpsSettingsDialog();
+                } else if (gpsDialog != null && gpsDialog.isShowing()) {
+                    gpsDialog.dismiss();
+                }
+            }
+        }
+    };
+
+    private final BroadcastReceiver networkReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            updateInternetStatusBanner(isInternetConnected());
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Initialize the internet status banner
+        internetStatusBanner = findViewById(R.id.internet_status_banner);
 
         if (savedInstanceState == null) {
             FragmentManager fragmentManager = getSupportFragmentManager();
@@ -58,99 +83,93 @@ public class MainActivity extends AppCompatActivity {
                     .commit();
         }
 
-        // Initialize and register the BroadcastReceiver
-        registerStatusReceiver();
+        // Register receivers for GPS and network changes
+        registerReceiver(gpsReceiver, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
+        registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
+        checkGpsStatusAndPrompt();
+        checkForegroundLocationPermission();
+        updateInternetStatusBanner(isInternetConnected());
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (statusReceiver != null) {
-            unregisterReceiver(statusReceiver); // Unregister the BroadcastReceiver to avoid memory leaks
+    protected void onResume() {
+        super.onResume();
+        checkGpsStatusAndPrompt();
+        updateInternetStatusBanner(isInternetConnected());
+    }
+
+    private void checkGpsStatusAndPrompt() {
+        if (!isGpsEnabled()) {
+            showGpsSettingsDialog();
+        } else if (gpsDialog != null && gpsDialog.isShowing()) {
+            gpsDialog.dismiss();
         }
     }
 
-    private void registerStatusReceiver() {
-        statusReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // Check both internet and GPS status whenever there's a change
-                if (isInternetAvailable() && isGpsEnabled()) {
-                    redirectedToSettings = false; // Reset flag once both conditions are met
-                    checkLocationPermission(); // Request permissions if both conditions are met
-                } else {
-                    if (!isInternetAvailable()) {
-                        Toast.makeText(MainActivity.this, "Internet connection is not available.", Toast.LENGTH_SHORT).show();
-                    }
-                    if (!isGpsEnabled() && !redirectedToSettings) {
-                        Toast.makeText(MainActivity.this, "GPS is turned off. Please enable it in settings.", Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)); // Open location settings
-                        redirectedToSettings = true; // Set the flag to avoid repeated redirection
-                    }
-                }
-            }
-        };
-
-        // Register the receiver for connectivity and GPS provider changes
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        filter.addAction(LocationManager.PROVIDERS_CHANGED_ACTION);
-        registerReceiver(statusReceiver, filter);
+    private boolean isGpsEnabled() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
     }
 
-    private void checkLocationPermission() {
-        if (!askedForPermissions) { // Only request permissions if not already asked
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                checkBackgroundLocationPermission(); // If fine location is granted, check background location permission
-            } else {
-                fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION); // Request fine location permission
-            }
-            askedForPermissions = true; // Set the flag to true after requesting
+    private void showGpsSettingsDialog() {
+        if (gpsDialog == null || !gpsDialog.isShowing()) {
+            gpsDialog = new AlertDialog.Builder(this)
+                    .setTitle("Enable GPS")
+                    .setMessage("GPS is required for this app. Please enable GPS in settings.")
+                    .setCancelable(false)
+                    .setPositiveButton("Go to Settings", (dialog, which) -> {
+                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        startActivity(intent);
+                    })
+                    .setNegativeButton("Exit App", (dialog, which) -> {
+                        Toast.makeText(this, "GPS is required for tracking. Exiting app.", Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .create();
+            gpsDialog.show();
+        }
+    }
+
+    public void checkForegroundLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            checkBackgroundLocationPermission();
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
     private void checkBackgroundLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Only required for Android 10 and above
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                startLocationService();
-            } else {
-                backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION); // Request background location permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             }
-        } else {
-            startLocationService(); // Start service directly if background permission isn't needed
         }
     }
 
-    public void startLocationService() {
-        Intent serviceIntent = new Intent(this, StatusCheckService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+    private void updateInternetStatusBanner(boolean isConnected) {
+        internetStatusBanner.setVisibility(isConnected ? TextView.GONE : TextView.VISIBLE);
     }
 
-    public boolean isInternetAvailable() {
+    private boolean isInternetConnected() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-
         if (connectivityManager != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(connectivityManager.getActiveNetwork());
-                return networkCapabilities != null &&
-                        (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                                networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                                networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+                Network network = connectivityManager.getActiveNetwork();
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             } else {
-                return connectivityManager.getActiveNetworkInfo() != null &&
-                        connectivityManager.getActiveNetworkInfo().isConnected();
+                android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+                return networkInfo != null && networkInfo.isConnected();
             }
         }
         return false;
     }
 
-    public boolean isGpsEnabled() {
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        return locationManager != null && (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER));
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(gpsReceiver);
+        unregisterReceiver(networkReceiver);
     }
 }

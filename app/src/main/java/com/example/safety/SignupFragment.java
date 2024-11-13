@@ -3,12 +3,10 @@ package com.example.safety;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 
-import android.location.LocationManager;
 import android.os.Bundle;
 
 
@@ -18,6 +16,8 @@ import androidx.fragment.app.Fragment;
 
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,10 +35,7 @@ import android.app.DatePickerDialog;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
-import android.os.Bundle;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
+
 import android.util.Log;
 
 import android.widget.Toast;
@@ -261,16 +258,97 @@ showLocationPermissionDialog();
         back_to_login = view.findViewById(R.id.back_to_login);
         progressBar = view.findViewById(R.id.progress_bar);
         emp_id =view.findViewById(R.id.emp_id);
-        String already_registered_text = getString(R.string.back_to_login);
-        SpannableString spannableString = new SpannableString(already_registered_text);
-        int color = ContextCompat.getColor(requireContext(), R.color.click_back_to_login);
-        int startIndex = already_registered_text.indexOf("Click here");
-        int endIndex = startIndex + "Click here".length();
-        spannableString.setSpan(new ForegroundColorSpan(color), startIndex, endIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        back_to_login.setText(spannableString);
         back_to_login.setOnClickListener(v -> switchToLoginFragment());
         dob.setOnClickListener(v -> showDatePickerDialog());
 
+        name.addTextChangedListener(createTextWatcher(name, "[a-zA-Z ]*", "Please enter only letters"));
+        mobile.addTextChangedListener(createTextWatcher(mobile, "[0-9]*", "Please enter only numbers"));
+        address.addTextChangedListener(createTextWatcher(address, "[a-zA-Z0-9 ,\\-]*", "Only letters, numbers, spaces, hyphens, and commas are allowed."));
+
+
+
+//        address.addTextChangedListener(new TextWatcher() {
+//            @Override
+//            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+//                // No action needed here
+//            }
+//
+//            @Override
+//            public void onTextChanged(CharSequence s, int start, int before, int count) {
+//                // No action needed here
+//            }
+//
+//            @Override
+//            public void afterTextChanged(Editable s) {
+//                String input = s.toString();
+//                // Allow only letters, numbers, spaces, commas, and hyphens
+//                if (!input.matches("[a-zA-Z0-9 ,\\-]*")) {
+//                    Toast.makeText(getContext(), "Only letters, numbers, spaces, hyphens, and commas are allowed.", Toast.LENGTH_SHORT).show();
+//                    // Remove all characters not matching the allowed pattern
+//                    String filteredInput = input.replaceAll("[^a-zA-Z0-9 ,\\-]", "");
+//                    address.setText(filteredInput);
+//                    address.setSelection(filteredInput.length()); // Move cursor to the end
+//                }
+//            }
+//        });
+//
+//        name.addTextChangedListener(new TextWatcher() {
+//            @Override
+//            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+//                // No need to implement this method for our purpose
+//            }
+//
+//            @Override
+//            public void onTextChanged(CharSequence s, int start, int before, int count) {
+//                // No need to implement this method for our purpose
+//            }
+//
+//            @Override
+//            public void afterTextChanged(Editable s) {
+//                String input = s.toString();
+//                // Check if the input contains only letters, if not, remove invalid characters
+//                if (!input.matches("[a-zA-Z ]*")) {
+//                    // Remove non-letter characters
+//                    Toast.makeText(getContext(), "Please enter only letters", Toast.LENGTH_SHORT).show();
+//                    String filteredInput = input.replaceAll("[^a-zA-Z ]", "");
+//                    name.setText(filteredInput);
+//                    name.setSelection(filteredInput.length()); // Move cursor to the end
+//                }
+//            }
+//        });
+//mobile.addTextChangedListener(new TextWatcher() {
+//    @Override
+//    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+//
+//    }
+//
+//    @Override
+//    public void onTextChanged(CharSequence s, int start, int before, int count) {
+//
+//    }
+//
+//    @Override
+//    public void afterTextChanged(Editable s) {
+//        String input = s.toString();
+//        // Check if the input contains only digits, if not, remove invalid characters
+//        if (!input.matches("[0-9]*")) {
+//            // Remove non-numeric characters
+//            Toast.makeText(getContext(), "Please enter only numbers", Toast.LENGTH_SHORT).show();
+//            String filteredInput = input.replaceAll("[^0-9]", "");
+//            mobile.setText(filteredInput);
+//            mobile.setSelection(filteredInput.length()); // Move cursor to the end
+//        }
+//
+//        // Optional: Limit to 10 digits for mobile number
+//        if (input.length() > 10) {
+//            Toast.makeText(getContext(), "Mobile number should be 10 digits", Toast.LENGTH_SHORT).show();
+//            String limitedInput = input.substring(0, 10);
+//            mobile.setText(limitedInput);
+//            mobile.setSelection(limitedInput.length()); // Move cursor to the end
+//        }
+//    }
+//
+//});
 
 
 
@@ -285,7 +363,11 @@ showLocationPermissionDialog();
             String empid_txt=emp_id.getText().toString().trim();
             androidId = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
 
-
+          if (photoUri==null){
+              Toast.makeText(requireContext(), "Select Image before proceeding", Toast.LENGTH_SHORT).show();
+              return;
+          }
+            //Toast.makeText(requireContext(), "Please enable GPS", Toast.LENGTH_SHORT).show();
 
             Map<String, Object> userData = new HashMap<>();
             userData.put("name", name_txt);
@@ -305,12 +387,12 @@ showLocationPermissionDialog();
                 return; // Stop the execution if validation fails
             }
 
-            if (!checkGps())
-            {
-                //Toast.makeText(requireContext(), "Please enable GPS", Toast.LENGTH_SHORT).show();
-                return;
 
-            }
+
+
+
+
+
             fetchLocationAndSetAddress();
             checkAccountExists(userData);
         });
@@ -341,6 +423,26 @@ showLocationPermissionDialog();
 
         return view;
 
+    }
+    private TextWatcher createTextWatcher(EditText editText, String pattern, String message) {
+        return new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) { }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String input = s.toString();
+                if (!input.matches(pattern)) {
+                    Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                    String filteredInput = input.replaceAll("[^" + pattern + "]", "");
+                    editText.setText(filteredInput);
+                    editText.setSelection(filteredInput.length());
+                }
+            }
+        };
     }
 
     private void switchToLoginFragment() {
@@ -428,20 +530,13 @@ showLocationPermissionDialog();
 
 
     private void registerUser(Map<String, Object> userData) {
-        if (photoUri == null) {
-            Toast.makeText(requireContext(), "Please select an image before registering.", Toast.LENGTH_SHORT).show();
-            progressBar.setVisibility(View.GONE);
-            sign_expand_btn.setEnabled(true);
-            return;
-        }
-
         if (Objects.equals(homegeoCoordinates, "")) {
 
             Log.e("homegeoCoordinates",homegeoCoordinates);
             Toast.makeText(requireContext(), "Location not available. Please enable location and try again.", Toast.LENGTH_SHORT).show();
             progressBar.setVisibility(View.GONE);
             sign_expand_btn.setEnabled(true);
-            //showLocationPermissionDialog();
+            fetchLocationAndSetAddress();
             return; // Stop execution here
         }
 
@@ -558,62 +653,7 @@ showLocationPermissionDialog();
         datePickerDialog.show();
     }
 
-//    private final LocationCallback locationCallback = new LocationCallback() {
-//        @Override
-//        public void onLocationResult(LocationResult locationResult) {
-//            if (locationResult == null) {
-//                geoCoordinates = "Unavailable";
-//                Toast.makeText(requireContext(), "Unable to fetch location continuously", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            for (Location location : locationResult.getLocations()) {
-//                double latitude = location.getLatitude();
-//                double longitude = location.getLongitude();
-//
-//                geoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
-//                Geocoder geocoder = new Geocoder(requireContext());
-//                try {
-//
-//                    List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
-//                    if (addresses != null && !addresses.isEmpty()) {
-//                        Address address = addresses.get(0);
-//                        String tempadd = address.getAddressLine(0);
-//                        Log.d("geocode", tempadd);
-//                    }
-//
-//                }
-//                catch (Exception e){
-//
-//                    Log.d("geocode error", e.getMessage());
-//                }
-//
-//                // Log the latitude and longitude
-//                Log.d("LocationUpdate", "Latitude: " + latitude + ", Longitude: " + longitude);
-//            }
-//        }
-//    };
 
-
-//    private void fetchContinuousLocationUpdates() {
-//        LocationRequest locationRequest = new LocationRequest.Builder(
-//                Priority.PRIORITY_HIGH_ACCURACY, // Priority level
-//                10000 // 10 seconds interval for updates
-//        )
-//                .setMinUpdateIntervalMillis(5000) // Minimum interval between updates
-//                .setMaxUpdateDelayMillis(15000) // Maximum delay if updates are delayed
-//                .build(); // Minimum interval between updates
-//
-//        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-//            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback,Looper.getMainLooper());
-//        } else {
-//            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
-//        }
-//    }
-
-    // Stop updates when no longer needed
-//    private void stopLocationUpdates() {
-//        fusedLocationClient.removeLocationUpdates(locationCallback);
-//    }
 
 
     private void fetchLocationAndSetAddress() {
@@ -624,27 +664,29 @@ showLocationPermissionDialog();
                     Location location = task.getResult();
                     double latitude = location.getLatitude();
                     double longitude = location.getLongitude();
+
+                    AppConstants.setHomeCoordinates(latitude, longitude);
                     Log.d("if","if second");
                     // Save coordinates to geoCoordinates
                     homegeoCoordinates = "Lat: " + latitude + ", Long: " + longitude;
+                    if(Objects.equals(homegeoCoordinates,""))
+                    {
+                        Toast.makeText(requireContext(), "please wait.while we gather your location", Toast.LENGTH_SHORT).show();
+                        fetchLocationAndSetAddress();
+                        return;
+                    }
+
                     Log.d("geocoordinate","first geocoordinate"+homegeoCoordinates);
 
                 }
 
-//                else {
-//                    // If location is unavailable, set a default value
-//                    geoCoordinates = "Unavailable";
-//
-//                    Log.d("else","else first");
-//                    showLocationPermissionDialog();
-//                    //Toast.makeText(requireContext(), "Unable to fetch location. Coordinates set as 'Unavailable'", Toast.LENGTH_SHORT).show();
-//                }
+
             });
+
         } else {
             // Request location permission using the launcher
             Log.d("else","else second");
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
-
 
         }
     }
@@ -653,14 +695,6 @@ showLocationPermissionDialog();
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Location Permission Needed");
         builder.setMessage("This app requires location access to provide location-based services. Please allow access.");
-
-        // Set positive button to request permission
-//        builder.setPositiveButton("Allow", (dialog, which) -> {
-//            // Request permission
-//            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
-//        });
-
-        // Set negative button to open app settings
         builder.setNegativeButton("Settings", (dialog, which) -> {
             // Open app settings to allow user to manually enable the permission
             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
@@ -677,18 +711,5 @@ showLocationPermissionDialog();
 
     }
 
-    public boolean checkGps() {
-        LocationManager locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
-        if (locationManager != null &&
-                (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
-                        !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))) {
 
-            Toast.makeText(requireContext(), "Location is turned off. Please enable it in settings.", Toast.LENGTH_LONG).show();
-            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-            return false;
-        } else {
-            //Toast.makeText(requireContext(), "Location is already enabled.", Toast.LENGTH_SHORT).show();
-            return true;
-        }
-    }
 }

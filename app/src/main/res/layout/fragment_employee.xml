@@ -58,7 +58,7 @@
         android:background="@drawable/login_btn_design"
         android:foreground="@drawable/login_btn_click_ripple"
         android:text="Login"
-        android:textAllCaps="false"
+        android:textAllCaps="true"
         android:textColor="@color/white"
         android:textSize="22sp"
 
@@ -88,7 +88,7 @@
         android:layout_height="50dp"
         android:clickable="true"
         android:gravity="center_vertical"
-android:textColor="@color/LoginBtn"
+android:textColor="@color/blue"
         android:text="Click Here"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="@+id/new_emp"
