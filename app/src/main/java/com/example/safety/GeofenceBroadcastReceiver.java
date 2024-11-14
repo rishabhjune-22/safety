@@ -1,12 +1,12 @@
 package com.example.safety;
 
 import static android.content.ContentValues.TAG;
-import static com.example.safety.AppConstants.HOME_GEOFENCE_ID;
-import static com.example.safety.AppConstants.OFFICE_GEOFENCE_ID;
+
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
+import android.content.SharedPreferences;
 
 import android.content.Context;
 import android.content.Intent;
@@ -37,6 +37,11 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             Log.e(TAG, "Received null intent in onReceive.");
             return;
         }
+
+        SharedPreferences preferences = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        String homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
+        String officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
+
 
         // Retrieve the GeofencingEvent from the intent
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
@@ -89,24 +94,24 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             Log.d(TAG, "Updating Firestore document for user ID: " + employeeId);
 
             if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-                if (requestId.equals(HOME_GEOFENCE_ID)) {
+                if (requestId.equals(homeGeofenceId)) {
                     Log.d(TAG, "Home geofence ENTER detected.");
                     docRef.update("home_check_in", timestamp)
                             .addOnSuccessListener(aVoid -> Log.d(TAG, "Home check-in time updated"))
                             .addOnFailureListener(e -> Log.e(TAG, "Failed to update home check-in", e));
-                } else if (requestId.equals(OFFICE_GEOFENCE_ID)) {
+                } else if (requestId.equals(officeGeofenceId)) {
                     Log.d(TAG, "Office geofence ENTER detected.");
                     docRef.update("office_check_in", timestamp)
                             .addOnSuccessListener(aVoid -> Log.d(TAG, "Office check-in time updated"))
                             .addOnFailureListener(e -> Log.e(TAG, "Failed to update office check-in", e));
                 }
             } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-                if (requestId.equals(HOME_GEOFENCE_ID)) {
+                if (requestId.equals(homeGeofenceId)) {
                     Log.d(TAG, "Home geofence EXIT detected.");
                     docRef.update("home_check_out", timestamp)
                             .addOnSuccessListener(aVoid -> Log.d(TAG, "Home check-out time updated"))
                             .addOnFailureListener(e -> Log.e(TAG, "Failed to update home check-out", e));
-                } else if (requestId.equals(OFFICE_GEOFENCE_ID)) {
+                } else if (requestId.equals(officeGeofenceId)) {
                     Log.d(TAG, "Office geofence EXIT detected.");
                     docRef.update("office_check_out", timestamp)
                             .addOnSuccessListener(aVoid -> Log.d(TAG, "Office check-out time updated"))

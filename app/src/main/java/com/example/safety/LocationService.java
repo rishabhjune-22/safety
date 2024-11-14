@@ -1,13 +1,8 @@
 package com.example.safety;
 
 import static android.content.ContentValues.TAG;
-import static com.example.safety.AppConstants.GEOFENCE_RADIUS_IN_METERS;
-import static com.example.safety.AppConstants.HOME_GEOFENCE_ID;
-import static com.example.safety.AppConstants.HOME_LATITUDE;
-import static com.example.safety.AppConstants.HOME_LONGITUDE;
-import static com.example.safety.AppConstants.OFFICE_GEOFENCE_ID;
-import static com.example.safety.AppConstants.OFFICE_LATITUDE;
-import static com.example.safety.AppConstants.OFFICE_LONGITUDE;
+
+import android.content.SharedPreferences;
 
 import android.Manifest;
 import android.app.Notification;
@@ -51,6 +46,14 @@ public class LocationService extends Service {
     private LocationCallback locationCallback;
     private GeofencingClient geofencingClient;
     private PendingIntent geofencePendingIntent;
+    private double homeLatitude;
+    private double homeLongitude;
+    private String homeGeofenceId;
+    private double officeLatitude;
+    private double officeLongitude;
+    private String officeGeofenceId;
+    private float geofenceRadius;
+
 
     @Override
     public void onCreate() {
@@ -60,7 +63,7 @@ public class LocationService extends Service {
         // Initialize FusedLocationProviderClient
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         geofencingClient = LocationServices.getGeofencingClient(this);
-
+        loadGeofenceDataFromPreferences();
         // Create a LocationCallback to receive location updates
         locationCallback = new LocationCallback() {
             @Override
@@ -83,20 +86,56 @@ public class LocationService extends Service {
         // Start the service as a foreground service
         startForeground(1, createNotification());
     }
+    private void loadGeofenceDataFromPreferences() {
+        SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+
+        // Extract home coordinates
+        String homeGeoCoordinates = preferences.getString(AppConstants.KEY_HOME_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
+        String[] homeParts = homeGeoCoordinates.split(",");
+        homeLatitude = parseCoordinate(homeParts[0], "Lat: ");
+        homeLongitude = parseCoordinate(homeParts[1], "Long: ");
+        homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
+
+        // Extract office coordinates
+        String officeGeoCoordinates = preferences.getString(AppConstants.KEY_WORK_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
+        String[] officeParts = officeGeoCoordinates.split(",");
+        officeLatitude = parseCoordinate(officeParts[0], "Lat: ");
+        officeLongitude = parseCoordinate(officeParts[1], "Long: ");
+        officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
+
+        // Retrieve geofenceRadius as a String and convert it to a float
+        String geofenceRadiusString = preferences.getString(AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS, String.valueOf(AppConstants.GEOFENCE_RADIUS_IN_METERS));
+        geofenceRadius = Float.parseFloat(geofenceRadiusString);
+    }
+
+
+    // Helper method to parse individual coordinate parts
+    private double parseCoordinate(String part, String prefix) {
+        try {
+            return Double.parseDouble(part.replace(prefix, "").trim());
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "Failed to parse coordinate: " + part, e);
+            return 0.0;
+        }
+    }
+
+
+
+
 
     private void addGeofences() {
         Log.d(TAG, "Attempting to add geofences...");
 
         Geofence homeGeofence = new Geofence.Builder()
-                .setRequestId(HOME_GEOFENCE_ID)
-                .setCircularRegion(HOME_LATITUDE, HOME_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
+                .setRequestId(homeGeofenceId)
+                .setCircularRegion(homeLatitude, homeLongitude, geofenceRadius)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();
 
         Geofence officeGeofence = new Geofence.Builder()
-                .setRequestId(OFFICE_GEOFENCE_ID)
-                .setCircularRegion(OFFICE_LATITUDE, OFFICE_LONGITUDE, GEOFENCE_RADIUS_IN_METERS)
+                .setRequestId(officeGeofenceId)
+                .setCircularRegion(officeLatitude, officeLongitude, geofenceRadius)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();

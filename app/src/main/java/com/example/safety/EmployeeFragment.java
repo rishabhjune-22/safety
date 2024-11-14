@@ -1,4 +1,18 @@
 package com.example.safety;
+import static com.example.safety.AppConstants.KEY_HOME_GEOFENCE_ID;
+import static com.example.safety.AppConstants.KEY_IS_LOGGED_IN;
+import static com.example.safety.AppConstants.KEY_OFFICE_GEOFENCE_ID;
+import static com.example.safety.AppConstants.KEY_PROFILE_IMAGE_URL;
+import static com.example.safety.AppConstants.KEY_USER_ID;
+import static com.example.safety.AppConstants.KEY_USER_NAME;
+import static com.example.safety.AppConstants.KEY_EMAIL;
+import static com.example.safety.AppConstants.KEY_HOME_GEO_COORDINATES;
+import static com.example.safety.AppConstants.KEY_WORK_GEO_COORDINATES;
+import static com.example.safety.AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS;
+
+
+
+
 import android.Manifest;
 
 import android.content.Context;
@@ -10,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 
+import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -47,14 +62,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EmployeeFragment extends Fragment {
-    private static final String TAG = "EmployeeFragment";
-    private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1001;
-
-    private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
-    private static final String KEY_USER_ID = "userId";
-    private static final String KEY_USER_NAME = "name";
-    private static final String KEY_PROFILE_IMAGE_URL = "profileImageUrl";
-    private static final String KEY_EMAIL = "email";
 
     private EditText email, password;
     private AppCompatButton loginButton;
@@ -144,6 +151,7 @@ public class EmployeeFragment extends Fragment {
     }
     private void fetchUserDataAndLaunchHomePage(String userId) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+
         db.collection("users").document(userId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -151,7 +159,13 @@ public class EmployeeFragment extends Fragment {
                         String name = documentSnapshot.getString("name");
                         String profileImageUrl = documentSnapshot.getString("profileImageUrl");
                         String email= documentSnapshot.getString("email");
-                        saveLoginStatus(userId, name, profileImageUrl, email);
+                        String homeGeoCoordinates = documentSnapshot.getString("homegeoCoordinates");
+                        String officeGeoCoordinates = documentSnapshot.getString("officeGeoCoordinates");
+                        String geofenceRadiusInMeters= documentSnapshot.getString("geofenceRadiusInMeters");
+                        String homeGeofenceId = documentSnapshot.getString("homeGeofenceId");
+                        String officeGeofenceId = documentSnapshot.getString("officeGeofenceId");
+
+                        saveLoginStatus(userId, name, profileImageUrl, email, homeGeoCoordinates, officeGeoCoordinates, geofenceRadiusInMeters, homeGeofenceId, officeGeofenceId);
                         launchHomePage();
                         // Pass name and image URL to HomePageActivity
                     // Optional: close the login activity
@@ -165,7 +179,7 @@ public class EmployeeFragment extends Fragment {
     }
 
 
-    private void saveLoginStatus(String userId, String name, String profileImageUrl, String email) {
+    private void saveLoginStatus(String userId, String name, String profileImageUrl, String email,String homeGeoCoordinates, String workGeoCoordinates, String geofenceRadiusInMeters, String homeGeofenceId, String officeGeofenceId) {
         SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();// tomake it editable
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
@@ -173,6 +187,12 @@ public class EmployeeFragment extends Fragment {
         editor.putString(KEY_USER_NAME, name);
         editor.putString(KEY_PROFILE_IMAGE_URL, profileImageUrl);
         editor.putString(KEY_EMAIL, email);
+        editor.putString(KEY_HOME_GEO_COORDINATES, homeGeoCoordinates);
+        editor.putString(KEY_WORK_GEO_COORDINATES, workGeoCoordinates);
+        editor.putString(KEY_GEOFENCE_RADIUS_IN_METERS, geofenceRadiusInMeters);
+        editor.putString(KEY_HOME_GEOFENCE_ID, homeGeofenceId);
+        editor.putString(KEY_OFFICE_GEOFENCE_ID, officeGeofenceId);
+
         editor.apply();
     }
 
