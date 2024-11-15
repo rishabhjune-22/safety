@@ -54,7 +54,10 @@ import android.widget.Toast;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.PersistentCacheSettings;
 
@@ -63,11 +66,16 @@ import java.util.regex.Pattern;
 
 public class EmployeeFragment extends Fragment {
 
+
+
+
+    private String deviceId;
+
     private EditText email, password;
     private AppCompatButton loginButton;
     private TextView signUpTextView;
     private FirebaseAuth mAuth;
-
+    private FirebaseFirestore db;
 
     public EmployeeFragment() {
         // Required empty public constructor
@@ -83,8 +91,8 @@ public class EmployeeFragment extends Fragment {
         password = view.findViewById(R.id.pass);
         loginButton = view.findViewById(R.id.login_btn);
         signUpTextView = view.findViewById(R.id.new_emp_click_here);
-
         signUpTextView.setOnClickListener(v -> switchToSignUpFragment());
+        db = FirebaseFirestore.getInstance();
         if (isUserLoggedIn()) {
             launchHomePage();
         }
@@ -131,8 +139,10 @@ public class EmployeeFragment extends Fragment {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
                             String userId = user.getUid();
-                            Toast.makeText(requireContext(), "Login successful!", Toast.LENGTH_SHORT).show();
-                            fetchUserDataAndLaunchHomePage(userId);
+                            //Toast.makeText(requireContext(), "Login successful!", Toast.LENGTH_SHORT).show();
+                            checkLoginStatus(userId);
+
+                            //fetchUserDataAndLaunchHomePage(userId);
 
                         }
                     } else {
@@ -140,6 +150,62 @@ public class EmployeeFragment extends Fragment {
                     }
                 });
     }
+
+
+    private void checkLoginStatus(String userId) {
+        String currentDeviceId = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+
+        if (currentDeviceId == null) {
+            Toast.makeText(requireContext(), "Unable to retrieve device ID.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        db.runTransaction(transaction -> {
+            DocumentReference userRef = db.collection("users").document(userId);
+            DocumentSnapshot snapshot = transaction.get(userRef);
+
+            if (snapshot.exists()) {
+                String storedDeviceId = snapshot.getString("deviceId");
+                Boolean isActive = snapshot.getBoolean("isActive");
+
+                if (Boolean.TRUE.equals(isActive) && !currentDeviceId.equals(storedDeviceId)) {
+                    // Log out the previous session by updating the old device's data
+                    transaction.update(userRef, "isActive", false);
+                    Log.d("LoginStatus", "Previous session logged out.");
+                }
+
+                // If the session is not active or belongs to a different device, log in this device
+                if (!Boolean.TRUE.equals(isActive) || !currentDeviceId.equals(storedDeviceId)) {
+                    transaction.update(userRef, "deviceId", currentDeviceId, "isActive", true);
+                    Log.d("LoginStatus", "Current session logged in.");
+                }
+
+            } else {
+                // Graceful fallback for non-existing user document
+                throw new FirebaseFirestoreException("User document not found", FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+            return null;
+        }).addOnSuccessListener(aVoid -> {
+            Log.d("LoginStatus", "Transaction completed successfully.");
+            fetchUserDataAndLaunchHomePage(userId);
+        }).addOnFailureListener(e -> {
+            Log.e("Login", "Transaction failed: " + e.getMessage());
+            Toast.makeText(requireContext(), "Login failed. Please try again.", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Method to switch to the SignUpFragment
     private void switchToSignUpFragment() {
@@ -150,7 +216,7 @@ public class EmployeeFragment extends Fragment {
         fragmentTransaction.commit();
     }
     private void fetchUserDataAndLaunchHomePage(String userId) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
 
         db.collection("users").document(userId)
                 .get()

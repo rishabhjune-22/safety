@@ -58,6 +58,7 @@ public class LocationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        startForeground(1, createNotification());
         Log.d("LocationService", "Service started");
 
         // Initialize FusedLocationProviderClient
@@ -84,11 +85,11 @@ public class LocationService extends Service {
         addGeofences();
 
         // Start the service as a foreground service
-        startForeground(1, createNotification());
+
     }
     private void loadGeofenceDataFromPreferences() {
         SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-
+        try {
         // Extract home coordinates
         String homeGeoCoordinates = preferences.getString(AppConstants.KEY_HOME_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
         String[] homeParts = homeGeoCoordinates.split(",");
@@ -106,6 +107,15 @@ public class LocationService extends Service {
         // Retrieve geofenceRadius as a String and convert it to a float
         String geofenceRadiusString = preferences.getString(AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS, String.valueOf(AppConstants.GEOFENCE_RADIUS_IN_METERS));
         geofenceRadius = Float.parseFloat(geofenceRadiusString);
+
+        }catch (Exception e) {
+            Log.e(TAG, "Error loading geofence data from preferences", e);
+            homeLatitude = 0.0;
+            homeLongitude = 0.0;
+            officeLatitude = 0.0;
+            officeLongitude = 0.0;
+            geofenceRadius = AppConstants.GEOFENCE_RADIUS_IN_METERS;
+        }
     }
 
 

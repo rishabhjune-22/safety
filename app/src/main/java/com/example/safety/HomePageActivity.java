@@ -7,8 +7,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
-import android.view.WindowInsets;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,9 +29,12 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 public class HomePageActivity extends AppCompatActivity {
-
 
     Toolbar toolbar;
     DrawerLayout drawerLayout;
@@ -38,9 +42,11 @@ public class HomePageActivity extends AppCompatActivity {
     ActionBarDrawerToggle toggle;
     View headerView;
     ImageButton trackEmpButton;
-    String name_txt, profileImageUrl, email_txt,userID;
+    String name_txt, profileImageUrl, email_txt, userId;
     TextView cardnameTextView, headerProfileName, headerEmailText;
     ShapeableImageView cardprofileImageView, headerProfileImage;
+    private ListenerRegistration logoutListener;
+    private FirebaseFirestore db;
 
     // Request FINE location permission
     private final ActivityResultLauncher<String> fineLocationPermissionLauncher = registerForActivityResult(
@@ -48,7 +54,7 @@ public class HomePageActivity extends AppCompatActivity {
                 if (isGranted) {
                     checkBackgroundLocationPermission(); // Proceed to request background permission
                 } else {
-                    Toast.makeText(this, "Location permission denied.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Location permission denied. Location tracking will not work.", Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -59,7 +65,7 @@ public class HomePageActivity extends AppCompatActivity {
                 if (isGranted) {
                     startLocationService();
                 } else {
-                    Toast.makeText(this, "Background location permission denied.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Background location permission denied. Location tracking will not work in the background.", Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -69,19 +75,71 @@ public class HomePageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home_page);
 
-        // UI initialization
-        initializeUI();
+        db = FirebaseFirestore.getInstance();
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        // Check and request location permissions, then start location service
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+            updateIsActiveStatus(true); // Set isActive to true on login
+            setLogoutListener(userId);
+        } else {
+            redirectToLogin();
+        }
+
+        initializeUI();
         checkLocationPermission();
     }
 
+    private void updateIsActiveStatus(boolean isActive) {
+        if (userId != null) {
+            db.collection("users").document(userId)
+                    .update("isActive", isActive)
+                    .addOnSuccessListener(aVoid -> Log.d("HomePageActivity", "isActive updated to: " + isActive))
+                    .addOnFailureListener(e -> Log.e("HomePageActivity", "Failed to update isActive", e));
+        }
+    }
+
+    private void setLogoutListener(String userId) {
+        String currentDeviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+
+        if (currentDeviceId == null) {
+            Log.e("LogoutListener", "Unable to retrieve device ID.");
+            return;
+        }
+
+        DocumentReference userRef = db.collection("users").document(userId);
+
+        logoutListener = userRef.addSnapshotListener((snapshot, e) -> {
+            if (e != null) {
+                Log.e("LogoutListener", "Error listening to Firestore", e);
+                return;
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                String storedDeviceId = snapshot.getString("deviceId");
+                Boolean isActive = snapshot.getBoolean("isActive");
+
+                // Log values safely
+                Log.d("LogoutListener", "DeviceID: " + (storedDeviceId != null ? storedDeviceId : "null")
+                        + " ::: isActive: " + (isActive != null ? isActive : "null"));
+
+                // Correct logout condition
+                if (Boolean.TRUE.equals(isActive) && !currentDeviceId.equals(storedDeviceId)) {
+                    Log.d("LogoutListener", "Another device logged in. Logging out this device.");
+                    logOut();
+                }
+            } else {
+                Log.d("LogoutListener", "Snapshot is null or does not exist.");
+            }
+        });
+    }
+
+
+
     private void initializeUI() {
-        // Initialize UI elements and toolbar
         name_txt = getIntent().getStringExtra("name") != null ? getIntent().getStringExtra("name") : "User";
         profileImageUrl = getIntent().getStringExtra("profileImageUrl") != null ? getIntent().getStringExtra("profileImageUrl") : "";
         email_txt = getIntent().getStringExtra("email") != null ? getIntent().getStringExtra("email") : "";
-        //userID = getIntent().getStringExtra("userId") != null ? getIntent().getStringExtra("userId") : "";
 
         navigationView = findViewById(R.id.nav_view);
         headerView = navigationView.getHeaderView(0);
@@ -109,10 +167,7 @@ public class HomePageActivity extends AppCompatActivity {
 
         // Track Employee Button Listener
         trackEmpButton = findViewById(R.id.track_activity_btn);
-        trackEmpButton.setOnClickListener(v -> {
-            Intent intent = new Intent(HomePageActivity.this, trackemployee.class);
-            startActivity(intent);
-        });
+        trackEmpButton.setOnClickListener(v -> startActivity(new Intent(HomePageActivity.this, trackemployee.class)));
 
         // Navigation Drawer Menu Click Listener
         navigationView.setNavigationItemSelectedListener(item -> {
@@ -124,14 +179,33 @@ public class HomePageActivity extends AppCompatActivity {
     }
 
     private void logOut() {
-        Intent stopServiceIntent = new Intent(this, LocationService.class);
-        stopService(stopServiceIntent);
-        SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.clear();
-        editor.apply();
-        FirebaseAuth.getInstance().signOut();
+        if (logoutListener != null) {
+            logoutListener.remove();
+            logoutListener = null;
+        }
 
+        String currentDeviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+
+        db.collection("users").document(userId)
+                .update("isActive", false) // Clear the deviceId for this session
+                .addOnCompleteListener(task -> {
+                    Intent stopServiceIntent = new Intent(this, LocationService.class);
+                    stopService(stopServiceIntent);
+
+                    FirebaseAuth.getInstance().signOut();
+
+                    SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.clear();
+                    editor.apply();
+
+                    Toast.makeText(this, "You have been logged out.", Toast.LENGTH_SHORT).show();
+                    redirectToLogin();
+                });
+    }
+
+
+    private void redirectToLogin() {
         Intent intent = new Intent(HomePageActivity.this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
@@ -140,26 +214,26 @@ public class HomePageActivity extends AppCompatActivity {
 
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            checkBackgroundLocationPermission(); // Check background location permission if fine location is granted
+            checkBackgroundLocationPermission();
         } else {
-            fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION); // Request fine location permission
+            fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
     private void checkBackgroundLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Only required for Android 10 and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 startLocationService();
             } else {
-                backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION); // Request background location permission
+                backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             }
         } else {
-            startLocationService(); // No need for background permission below Android 10
+            startLocationService();
         }
     }
 
     private void startLocationService() {
-        if (hasLocationPermissions()) { // Check for permissions before starting the service
+        if (hasLocationPermissions()) {
             Intent serviceIntent = new Intent(this, LocationService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(serviceIntent);
@@ -167,14 +241,21 @@ public class HomePageActivity extends AppCompatActivity {
                 startService(serviceIntent);
             }
         } else {
-            Toast.makeText(this, "Location permissions are required to start the service.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Location permissions are required.", Toast.LENGTH_SHORT).show();
         }
     }
+
     private boolean hasLocationPermissions() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
                 (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
                         ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED);
     }
 
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (logoutListener != null) {
+            logoutListener.remove();
+        }
+    }
 }
