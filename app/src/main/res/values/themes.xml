@@ -2,28 +2,15 @@
 
     <!-- Base application theme for the light mode -->
     <style name="Base.Theme.Safety" parent="Theme.Material3.Light.NoActionBar">
-        <!-- Use this to customize your light theme -->
-<item name="colorControlNormal">@color/white</item>
-        <!-- Uncomment or modify these lines as needed to customize colors -->
-        <!--<item name="colorPrimary">@color/my_light_primary</item>-->
-        <!--<item name="colorPrimaryVariant">@color/my_light_primary_variant</item>-->
-        <!--<item name="colorOnPrimary">@color/my_light_on_primary</item>-->
-<!--        <item name="colorPrimary">@color/primaryColor</item>-->
-<!--        <item name="colorPrimaryVariant">@color/primaryVariantColor</item>-->
-<!--        <item name="colorSecondary">@color/secondaryColor</item>-->
-<!--        <item name="colorOnPrimary">@color/onPrimaryColor</item>-->
-        <!-- You can also set other colors like: -->
-        <!--<item name="colorSecondary">@color/my_light_secondary</item>-->
-        <!--<item name="colorSecondaryVariant">@color/my_light_secondary_variant</item>-->
-        <!--<item name="colorOnSecondary">@color/my_light_on_secondary</item>-->
+        <item name="colorControlNormal">@color/black</item>
+        <!-- Set white status bar -->
+        <item name="android:statusBarColor">@android:color/white</item>
+        <!-- Dark icons and text for status bar -->
+        <item name="android:windowLightStatusBar">true</item>
 
-        <!-- Set status bar and navigation bar colors if needed -->
-<!--        <item name="android:statusBarColor">@color/LoginBtn</item>-->
-        <!--<item name="android:navigationBarColor">@color/my_nav_bar_color</item>-->
-<item name="android:windowLightStatusBar">true</item>
+        <!--        <item name="android:textColor">@color/white</item>-->
+
     </style>
 
-    <!-- Primary theme for the application in light mode -->
-    <style name="Theme.Safety" parent="Base.Theme.Safety" />
 
 </resources>

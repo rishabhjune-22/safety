@@ -11,6 +11,7 @@ public class AppConstants {
     public static final String PREFS_NAME = "com.example.safety.PREFERENCES";
     public static final String KEY_OFFICE_GEOFENCE_ID = "OFFICE_GEOFENCE";
     public static final String KEY_HOME_GEOFENCE_ID = "HOME_GEOFENCE";
+    public static final Boolean KEY_IS_ADMIN = false;
 
     public static final double OFFICE_LATITUDE = 21.210865;
     public static final double OFFICE_LONGITUDE = 81.322846;

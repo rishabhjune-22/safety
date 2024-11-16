@@ -9,10 +9,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".HomePageActivity"
-
+    android:fitsSystemWindows="true"
 
     >
-<!--    android:fitsSystemWindows="true"-->
+
 
 
 
@@ -61,7 +61,7 @@
 
 
                 <LinearLayout
-android:background="@color/light_blue"
+                    android:background="@color/light_blue"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
@@ -178,10 +178,10 @@ android:background="@color/light_blue"
                     >
 
                     <ImageButton
-                        android:id="@+id/track_activity_btn"
+                        android:id="@+id/myactivity_btn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/trackactivity"
+                        android:background="@drawable/myactivity"
                         android:foreground="@drawable/widget_click_ripple"
 
                         />
@@ -189,7 +189,7 @@ android:background="@color/light_blue"
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:text="Track Employee"
+                        android:text="My Activity"
                         android:textAlignment="center"
                         />
                 </LinearLayout>
@@ -206,17 +206,17 @@ android:background="@color/light_blue"
                     >
 
                     <ImageButton
-                        android:id="@+id/employees_btn"
+                        android:id="@+id/task_btn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/employees1"
+                        android:background="@drawable/tasks"
                         android:foreground="@drawable/widget_click_ripple"
                         />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:text="Employees"
+                        android:text="Task"
                         android:textAlignment="center"
                         />
                 </LinearLayout>
@@ -235,7 +235,7 @@ android:background="@color/light_blue"
                         android:id="@+id/leave_app_btn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/camera_ic"
+                        android:background="@drawable/leaveapps"
                         android:foreground="@drawable/widget_click_ripple"
 
                         />
@@ -243,7 +243,7 @@ android:background="@color/light_blue"
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:text="Camera"
+                        android:text="Apply Leave"
                         android:textAlignment="center"
                         />
                 </LinearLayout>
@@ -253,44 +253,7 @@ android:background="@color/light_blue"
 
             </androidx.gridlayout.widget.GridLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="8dp">
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    app:boxBackgroundMode="outline"
-                    app:boxCornerRadiusBottomEnd="20dp"
-                    app:boxCornerRadiusBottomStart="20dp"
-                    app:boxCornerRadiusTopEnd="20dp"
-                    app:boxCornerRadiusTopStart="20dp"
-                    app:boxStrokeColor="@color/black"
-                    app:boxStrokeWidth="2dp">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Enter your message here"
-
-                        />
-                </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- ImageButton next to the TextInputLayout -->
-            <ImageButton
-                android:id="@+id/imageButton2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/sendicon"
-                android:layout_marginStart="8dp"
-            android:contentDescription="Send Message"
-android:foreground="@drawable/widget_click_ripple"
-                />
-        </LinearLayout>
 
         </LinearLayout>
 

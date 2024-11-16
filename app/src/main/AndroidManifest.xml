@@ -26,12 +26,17 @@
         android:theme="@style/Base.Theme.Safety"
         tools:targetApi="31">
         <activity
-            android:name=".trackemployee"
+            android:name=".MyActivity"
             android:exported="false" />
-        <!-- Activities -->
+        <activity
+            android:name=".MainActivity2"
+            android:exported="false"></activity>
+        <activity
+            android:name=".trackemployee"
+            android:exported="false" /> <!-- Activities -->
         <activity
             android:name=".HomePageActivity"
-            android:exported="true"></activity>
+            android:exported="true" />
         <activity
             android:name=".signup_activity"
             android:exported="false" />
@@ -59,17 +64,18 @@
 
         <service
             android:name=".LocationTrackingService"
-            android:foregroundServiceType="location"
             android:enabled="true"
-            android:exported="false" />
-
+            android:exported="false"
+            android:foregroundServiceType="location" />
         <service
             android:name=".StatusCheckService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
 
-        <receiver android:name=".GeofenceBroadcastReceiver" android:exported="false" />
+        <receiver
+            android:name=".GeofenceBroadcastReceiver"
+            android:exported="false" />
         <receiver
             android:name=".BootBroadcastReceiver"
             android:enabled="true"
@@ -78,13 +84,12 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
         <service
             android:name=".LocationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
-
-
     </application>
 
 </manifest>

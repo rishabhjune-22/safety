@@ -36,15 +36,20 @@ public class trackemployee extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+//       EdgeToEdge.enable(this);
         setContentView(R.layout.activity_trackemployee);
 
-        // Set system padding for edge-to-edge display
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+//         Set system padding for edge-to-edge display
+        findViewById(R.id.main).setOnApplyWindowInsetsListener((v, insets) -> {
+            WindowInsetsCompat windowInsets = WindowInsetsCompat.toWindowInsetsCompat(insets);
+            Insets systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            // Apply padding for system bars
+            v.setPadding(systemBarsInsets.left, systemBarsInsets.top, systemBarsInsets.right, systemBarsInsets.bottom);
+
             return insets;
         });
+
 
         // Initialize views
         recyclerView = findViewById(R.id.recyclerView_users);

@@ -1,5 +1,6 @@
 package com.example.safety;
 import static com.example.safety.AppConstants.KEY_HOME_GEOFENCE_ID;
+import static com.example.safety.AppConstants.KEY_IS_ADMIN;
 import static com.example.safety.AppConstants.KEY_IS_LOGGED_IN;
 import static com.example.safety.AppConstants.KEY_OFFICE_GEOFENCE_ID;
 import static com.example.safety.AppConstants.KEY_PROFILE_IMAGE_URL;
@@ -217,7 +218,7 @@ public class EmployeeFragment extends Fragment {
     }
     private void fetchUserDataAndLaunchHomePage(String userId) {
 
-
+        Toast.makeText(requireContext(), "You are Logged In!", Toast.LENGTH_SHORT).show();
         db.collection("users").document(userId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -230,11 +231,12 @@ public class EmployeeFragment extends Fragment {
                         String geofenceRadiusInMeters= documentSnapshot.getString("geofenceRadiusInMeters");
                         String homeGeofenceId = documentSnapshot.getString("homeGeofenceId");
                         String officeGeofenceId = documentSnapshot.getString("officeGeofenceId");
+                        boolean isAdmin = Boolean.TRUE.equals(documentSnapshot.getBoolean("isAdmin"));
+                        Log.d("from firebase", String.valueOf(isAdmin));
+                        saveLoginStatus(userId, name, profileImageUrl, email, homeGeoCoordinates, officeGeoCoordinates, geofenceRadiusInMeters, homeGeofenceId, officeGeofenceId, isAdmin);
 
-                        saveLoginStatus(userId, name, profileImageUrl, email, homeGeoCoordinates, officeGeoCoordinates, geofenceRadiusInMeters, homeGeofenceId, officeGeofenceId);
-                        launchHomePage();
                         // Pass name and image URL to HomePageActivity
-                    // Optional: close the login activity
+                        // Optional: close the login activity
                     } else {
                         Toast.makeText(requireContext(), "User data not found", Toast.LENGTH_SHORT).show();
                     }
@@ -245,7 +247,7 @@ public class EmployeeFragment extends Fragment {
     }
 
 
-    private void saveLoginStatus(String userId, String name, String profileImageUrl, String email,String homeGeoCoordinates, String workGeoCoordinates, String geofenceRadiusInMeters, String homeGeofenceId, String officeGeofenceId) {
+    private void saveLoginStatus(String userId, String name, String profileImageUrl, String email,String homeGeoCoordinates, String workGeoCoordinates, String geofenceRadiusInMeters, String homeGeofenceId, String officeGeofenceId,boolean isAdmin) {
         SharedPreferences preferences = requireContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();// tomake it editable
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
@@ -258,8 +260,10 @@ public class EmployeeFragment extends Fragment {
         editor.putString(KEY_GEOFENCE_RADIUS_IN_METERS, geofenceRadiusInMeters);
         editor.putString(KEY_HOME_GEOFENCE_ID, homeGeofenceId);
         editor.putString(KEY_OFFICE_GEOFENCE_ID, officeGeofenceId);
+        editor.putBoolean(String.valueOf(KEY_IS_ADMIN), isAdmin);
 
         editor.apply();
+        launchHomePage();
     }
 
     private void launchHomePage() {
@@ -269,7 +273,8 @@ public class EmployeeFragment extends Fragment {
         intent.putExtra("profileImageUrl", preferences.getString(KEY_PROFILE_IMAGE_URL, ""));
         intent.putExtra("email", preferences.getString(KEY_EMAIL, ""));
         intent.putExtra("userId", preferences.getString(KEY_USER_ID, ""));
-
+        intent.putExtra("isAdmin", preferences.getBoolean(String.valueOf(KEY_IS_ADMIN), false));
+Log.d("from shared", String.valueOf(preferences.getBoolean(String.valueOf(KEY_IS_ADMIN), false)));
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
 

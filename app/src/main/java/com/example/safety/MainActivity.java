@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -72,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+//        getWindow().setStatusBarColor(Color.BLACK);
 
         // Initialize the internet status banner
         internetStatusBanner = findViewById(R.id.internet_status_banner);
@@ -79,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             FragmentManager fragmentManager = getSupportFragmentManager();
             fragmentManager.beginTransaction()
-                    .replace(R.id.Frame_layout_container, new LoginFragment())
+                    .replace(R.id.Frame_layout_container, new EmployeeFragment())
                     .commit();
         }
 

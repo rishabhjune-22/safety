@@ -14,6 +14,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.common.api.ApiException;
 import android.os.Looper;
+import com.google.android.material.radiobutton.MaterialRadioButton;
 
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -34,6 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 
@@ -109,8 +111,11 @@ public class SignupFragment extends Fragment {
     private FirebaseFirestore db;
     private String homegeoCoordinates="";
     private String androidId;
+    private RadioGroup roleGroup;
+    private boolean isAdmin;
 
- //   private boolean isGPSEnable=false;
+
+    //   private boolean isGPSEnable=false;
  private LocationCallback locationCallback;
 
 
@@ -282,8 +287,7 @@ showLocationPermissionDialog();
         name.addTextChangedListener(createTextWatcher(name, "[a-zA-Z ]*", "Please enter only letters"));
         mobile.addTextChangedListener(createTextWatcher(mobile, "[0-9]*", "Please enter only numbers"));
         address.addTextChangedListener(createTextWatcher(address, "[a-zA-Z0-9 ,\\-]*", "Only letters, numbers, spaces, hyphens, and commas are allowed."));
-
-
+        roleGroup = view.findViewById(R.id.role_group);
 
 
 
@@ -298,6 +302,19 @@ showLocationPermissionDialog();
             String address_txt = address.getText().toString().trim();
             String empid_txt=emp_id.getText().toString().trim();
             //androidId = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+
+            int selectedId = roleGroup.getCheckedRadioButtonId();
+            if (selectedId == R.id.rb_employee) {
+                isAdmin = false;
+                Log.d("selectedRole",String.valueOf(isAdmin));
+            }
+            else if (selectedId == R.id.rb_admin) {
+            isAdmin = true;
+        }
+            else {
+            Toast.makeText(requireContext(), "Please select a role", Toast.LENGTH_SHORT).show();
+            return; // Stop if no role is selected
+        }
 
           if (photoUri==null){
               Toast.makeText(requireContext(), "Select Image before proceeding", Toast.LENGTH_SHORT).show();
@@ -321,6 +338,7 @@ showLocationPermissionDialog();
             userData.put("geofenceRadiusInMeters", String.valueOf(AppConstants.GEOFENCE_RADIUS_IN_METERS));
             userData.put("officeGeofenceId",KEY_OFFICE_GEOFENCE_ID);
             userData.put("homeGeofenceId",KEY_HOME_GEOFENCE_ID);
+            userData.put("isAdmin", isAdmin);
 
 
 
@@ -390,7 +408,7 @@ showLocationPermissionDialog();
     private void switchToLoginFragment() {
         FragmentManager fragmentManager = requireActivity().getSupportFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.Frame_layout_container, new LoginFragment());
+        fragmentTransaction.replace(R.id.Frame_layout_container, new EmployeeFragment());
         fragmentTransaction.addToBackStack(null); // Add to back stack for navigation
         fragmentTransaction.commit();
     }
