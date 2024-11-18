@@ -211,10 +211,16 @@ else{
 public void initializeEmployeeUI(){
     initializeCommonUI();
 
-
     myActivityBtn = findViewById(R.id.myactivity_btn);
-    myActivityBtn.setOnClickListener(v -> startActivity(new Intent(HomePageActivity.this, MyActivity.class)));
+    myActivityBtn.setOnClickListener(v -> {
+        // Pass name_txt to MyActivity
+        Intent intent = new Intent(HomePageActivity.this, MyActivity.class);
+        intent.putExtra("name", name_txt);
+        intent.putExtra("profileImageUrl", profileImageUrl);
 
+        // Add name_txt as an extra
+        startActivity(intent);
+    });
 
 }
 
