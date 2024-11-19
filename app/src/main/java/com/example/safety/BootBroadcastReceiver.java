@@ -1,6 +1,8 @@
 package com.example.safety;
 
+import static android.content.Context.MODE_PRIVATE;
 import static com.example.safety.AppConstants.KEY_IS_LOGGED_IN;
+import static com.example.safety.AppConstants.PREFS_NAME;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -16,7 +18,7 @@ public class BootBroadcastReceiver extends BroadcastReceiver {
             Log.d("BootBroadcastReceiver", "Device booted - checking login status");
 
             // Check if the user is logged in
-            SharedPreferences sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+            SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             boolean isLoggedIn = sharedPreferences.getBoolean(KEY_IS_LOGGED_IN, false);
 
             if (isLoggedIn) {
