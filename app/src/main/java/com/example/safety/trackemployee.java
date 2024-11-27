@@ -21,6 +21,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class trackemployee extends AppCompatActivity {
 
@@ -32,7 +33,7 @@ public class trackemployee extends AppCompatActivity {
     private TextInputEditText searchEditText;
     private FirebaseFirestore db;
     private ListenerRegistration listenerRegistration;
-
+    private List<User> filteredList;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,7 +93,44 @@ public class trackemployee extends AppCompatActivity {
                         for (DocumentSnapshot document : querySnapshot.getDocuments()) {
                             User user = document.toObject(User.class);
                             if (user != null) {
+                                Map<String, List<String>> homeCheckinMap = (Map<String, List<String>>) document.get("HOME_GEOFENCE_checkin");
+                                if (homeCheckinMap != null) {
+                                    user.setHomeCheckIn(homeCheckinMap);
+                                    Log.d(TAG, "Home check-in map set: " + homeCheckinMap);
+                                } else {
+                                    Log.d(TAG, "Home check-in map is null.");
+                                }
+
+                                // Handle home_checkout
+                                Map<String, List<String>> homeCheckoutMap = (Map<String, List<String>>) document.get("HOME_GEOFENCE_checkout");
+                                if (homeCheckoutMap != null) {
+                                    user.setHomeCheckOut(homeCheckoutMap);
+                                    Log.d(TAG, "Home check-out map set: " + homeCheckoutMap);
+                                } else {
+                                    Log.d(TAG, "Home check-out map is null.");
+                                }
+
+                                // Handle office_checkin
+                                Map<String, List<String>> officeCheckinMap = (Map<String, List<String>>) document.get("OFFICE_GEOFENCE_checkin");
+                                if (officeCheckinMap != null) {
+                                    user.setOfficeCheckIn(officeCheckinMap);
+                                    Log.d(TAG, "Office check-in map set: " + officeCheckinMap);
+                                } else {
+                                    Log.d(TAG, "Office check-in map is null.");
+                                }
+
+                                // Handle office_checkout
+                                Map<String, List<String>> officeCheckoutMap = (Map<String, List<String>>) document.get("OFFICE_GEOFENCE_checkout");
+                                if (officeCheckoutMap != null) {
+                                    user.setOfficeCheckOut(officeCheckoutMap);
+                                    Log.d(TAG, "Office check-out map set: " + officeCheckoutMap);
+                                } else {
+                                    Log.d(TAG, "Office check-out map is null.");
+                                }
+
+
                                 user.setLastSeen(document.getString("last_seen"));
+                                Log.d(TAG, "User before adding to list: " + user);
                                 userList.add(user);
                             }
                         }

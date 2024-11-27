@@ -30,6 +30,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.content.Intent;
 import android.graphics.PorterDuff;
@@ -61,6 +62,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.PersistentCacheSettings;
+import android.widget.ProgressBar;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -77,7 +79,7 @@ public class EmployeeFragment extends Fragment {
     private TextView signUpTextView;
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-
+    private ProgressBar progressBar;
     public EmployeeFragment() {
         // Required empty public constructor
     }
@@ -87,40 +89,46 @@ public class EmployeeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_employee, container, false);
+
+        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
+
+        // Bind views
         email = view.findViewById(R.id.email);
         password = view.findViewById(R.id.pass);
         loginButton = view.findViewById(R.id.login_btn);
         signUpTextView = view.findViewById(R.id.new_emp_click_here);
-        signUpTextView.setOnClickListener(v -> switchToSignUpFragment());
+        progressBar = view.findViewById(R.id.progress_bar);
+
+        // Initialize Firestore (do not set Firestore settings here)
         db = FirebaseFirestore.getInstance();
+
+        // Check if the user is already logged in
         if (isUserLoggedIn()) {
-            launchHomePage();
+            launchHomePage(); // Navigate to home page if logged in
+            return view; // Prevent further initialization
         }
 
-        FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
-                .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build()) // Enables persistent caching
-                .build();
+        // Handle sign-up navigation
+        signUpTextView.setOnClickListener(v -> switchToSignUpFragment());
 
-        FirebaseFirestore.getInstance().setFirestoreSettings(settings);
+        // Handle login button click
         loginButton.setOnClickListener(v -> {
             String emailText = email.getText().toString().trim();
-
             String passwordText = password.getText().toString().trim();
-//            Intent intent = new Intent(requireContext(), HomePageActivity.class);
-//            startActivity(intent);
-            //requireActivity().finish();
 
             if (emailText.isEmpty() || passwordText.isEmpty()) {
                 Toast.makeText(requireContext(), "Please enter both email and password", Toast.LENGTH_SHORT).show();
             } else if (!isValidEmail(emailText)) {
                 Toast.makeText(requireContext(), "Please enter a valid email address", Toast.LENGTH_SHORT).show();
             } else {
-                checkAccountExists(emailText, passwordText);  // Handle Firebase login logic
+                checkAccountExists(emailText, passwordText); // Handle Firebase login logic
             }
         });
+
         return view;
     }
+
 
     public boolean isValidEmail(String email) {
         String emailPattern = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -134,6 +142,9 @@ public class EmployeeFragment extends Fragment {
     }
     // Firebase login logic to check if account exists
     public void checkAccountExists(String email, String password) {
+loginButton.setEnabled(false);
+progressBar.setVisibility(View.VISIBLE);
+loginButton.setBackgroundResource(R.color.disabledState);
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -148,6 +159,10 @@ public class EmployeeFragment extends Fragment {
                         }
                     } else {
                         Toast.makeText(requireContext(), "Login failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        loginButton.setEnabled(true);
+                        progressBar.setVisibility(View.GONE);
+                        loginButton.setBackgroundResource(R.color.LoginBtn);
+
                     }
                 });
     }
@@ -158,6 +173,9 @@ public class EmployeeFragment extends Fragment {
 
         if (currentDeviceId == null) {
             Toast.makeText(requireContext(), "Unable to retrieve device ID.", Toast.LENGTH_SHORT).show();
+            loginButton.setEnabled(true);
+            progressBar.setVisibility(View.GONE);
+            loginButton.setBackgroundResource(R.color.LoginBtn);
             return;
         }
 
@@ -192,6 +210,9 @@ public class EmployeeFragment extends Fragment {
         }).addOnFailureListener(e -> {
             Log.e("Login", "Transaction failed: " + e.getMessage());
             Toast.makeText(requireContext(), "Login failed. Please try again.", Toast.LENGTH_SHORT).show();
+            loginButton.setEnabled(true);
+            progressBar.setVisibility(View.GONE);
+            loginButton.setBackgroundResource(R.color.LoginBtn);
         });
     }
 

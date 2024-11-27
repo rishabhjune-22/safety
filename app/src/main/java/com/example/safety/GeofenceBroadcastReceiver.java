@@ -2,12 +2,9 @@ package com.example.safety;
 
 import static android.content.ContentValues.TAG;
 
-
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
-import android.content.SharedPreferences;
-
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -16,90 +13,103 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofenceStatusCodes;
 import com.google.android.gms.location.GeofencingEvent;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.SetOptions;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 
 public class GeofenceBroadcastReceiver extends BroadcastReceiver {
     private static final String GEOFENCE_CHANNEL_ID = "geofence_channel";
-    private static final int GEOFENCE_NOTIFICATION_ID = 1002;
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "GeofenceBroadcastReceiver triggered.");
 
         if (intent == null) {
-            Log.e(TAG, "Received null intent in onReceive.");
-            showNotification(context, "Geofence Event Null", "Received a null intent");
+            Log.e(TAG, "Received null intent.");
+            showNotification(context, "Geofence Event Error", "Null intent received.");
             return;
         }
-
-        SharedPreferences preferences = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-        String homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
-        String officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
 
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
-        if (geofencingEvent == null) {
-            Log.e(TAG, "GeofencingEvent is null.");
-            showNotification(context, "Geofence Event Null", "GeofencingEvent is null, geofence not triggered");
+        if (geofencingEvent == null || geofencingEvent.hasError()) {
+            Log.e(TAG, "Geofencing event error.");
             return;
         }
 
-        if (geofencingEvent.hasError()) {
-            int errorCode = geofencingEvent.getErrorCode();
-            Log.e(TAG, "Geofence error: " + GeofenceStatusCodes.getStatusCodeString(errorCode));
-            showNotification(context, "Geofence Error", "Error code: " + errorCode);
-            return;
-        }
-
-        handleGeofenceTransition(context, geofencingEvent, homeGeofenceId, officeGeofenceId);
+        handleGeofenceTransition(context, geofencingEvent);
     }
 
-    private void handleGeofenceTransition(Context context, GeofencingEvent geofencingEvent, String homeGeofenceId, String officeGeofenceId) {
-        int geofenceTransition = geofencingEvent.getGeofenceTransition();
-        String timestamp = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(new Date());
-
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) {
-            Log.e(TAG, "No current user detected during geofence transition.");
+    private void handleGeofenceTransition(Context context, GeofencingEvent geofencingEvent) {
+        List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+        if (triggeringGeofences == null || triggeringGeofences.isEmpty()) {
+            Log.e(TAG, "No geofences triggered.");
             return;
         }
 
-        String employeeId = currentUser.getUid();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        DocumentReference docRef = db.collection("users").document(employeeId);
+        int geofenceTransition = geofencingEvent.getGeofenceTransition();
+        String timestamp = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(new Date());
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        for (Geofence geofence : Objects.requireNonNull(geofencingEvent.getTriggeringGeofences())) {
+        if (currentUser == null) {
+            Log.e(TAG, "No logged-in user.");
+            return;
+        }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference docRef = db.collection("users").document(currentUser.getUid());
+
+        for (Geofence geofence : triggeringGeofences) {
             String requestId = geofence.getRequestId();
 
+            // Log detailed information about the transition
+            Log.d(TAG, "Geofence Transition Detected: ");
+            Log.d(TAG, "Transition Type: " + getTransitionString(geofenceTransition));
+            Log.d(TAG, "Geofence ID: " + requestId);
+            Log.d(TAG, "Timestamp: " + timestamp);
+
+            String message;
+
             if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-                if (requestId.equals(homeGeofenceId)) {
-                    updateFirestore(docRef, "home_check_in", timestamp, "Home check-in");
-                } else if (requestId.equals(officeGeofenceId)) {
-                    updateFirestore(docRef, "office_check_in", timestamp, "Office check-in");
-                }
+                message = "Entered " + requestId + " at " + timestamp;
+                showNotification(context, "Geofence Enter", message);
+                Log.d(TAG, "Geofence ENTER Transition for: " + requestId);
+                updateFirestoreWithCheckinCheckout(docRef, requestId + "_checkin", timestamp);
             } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-                if (requestId.equals(homeGeofenceId)) {
-                    updateFirestore(docRef, "home_check_out", timestamp, "Home check-out");
-                } else if (requestId.equals(officeGeofenceId)) {
-                    updateFirestore(docRef, "office_check_out", timestamp, "Office check-out");
-                }
+                message = "Exited " + requestId + " at " + timestamp;
+                showNotification(context, "Geofence Exit", message);
+                Log.d(TAG, "Geofence EXIT Transition for: " + requestId);
+                updateFirestoreWithCheckinCheckout(docRef, requestId + "_checkout", timestamp);
+            } else {
+                Log.d(TAG, "Unknown Geofence Transition: " + geofenceTransition);
             }
         }
     }
 
-    private void updateFirestore(DocumentReference docRef, String field, String value, String logMessage) {
-        docRef.update(field, value)
-                .addOnSuccessListener(aVoid -> Log.d(TAG, logMessage + " time updated"))
-                .addOnFailureListener(e -> Log.e(TAG, "Failed to update " + logMessage.toLowerCase(), e));
+    private void updateFirestoreWithCheckinCheckout(DocumentReference docRef, String field, String timestamp) {
+        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+
+        Log.d(TAG, "Updating Firestore for field: " + field);
+        Log.d(TAG, "Date: " + date + ", Time: " + time);
+
+        docRef.get().addOnSuccessListener(documentSnapshot -> {
+            Map<String, List<String>> data = (Map<String, List<String>>) documentSnapshot.get(field);
+            if (data == null) data = new HashMap<>();
+
+            List<String> timeList = data.getOrDefault(date, new ArrayList<>());
+            timeList.add(time);
+            data.put(date, timeList);
+
+            docRef.set(Collections.singletonMap(field, data), SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Firestore updated successfully for field: " + field))
+                    .addOnFailureListener(e -> Log.e(TAG, "Firestore update failed for field: " + field, e));
+        }).addOnFailureListener(e -> Log.e(TAG, "Firestore fetch failed for field: " + field, e));
     }
 
     private void showNotification(Context context, String title, String message) {
@@ -115,6 +125,18 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_HIGH);
 
-        manager.notify(GEOFENCE_NOTIFICATION_ID, builder.build());
+        int uniqueNotificationId = (int) System.currentTimeMillis();
+        manager.notify(uniqueNotificationId, builder.build());
+    }
+
+    private String getTransitionString(int transitionType) {
+        switch (transitionType) {
+            case Geofence.GEOFENCE_TRANSITION_ENTER:
+                return "ENTER";
+            case Geofence.GEOFENCE_TRANSITION_EXIT:
+                return "EXIT";
+            default:
+                return "UNKNOWN";
+        }
     }
 }

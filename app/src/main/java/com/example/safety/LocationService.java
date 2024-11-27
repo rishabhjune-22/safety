@@ -2,8 +2,6 @@ package com.example.safety;
 
 import static android.content.ContentValues.TAG;
 
-import android.content.SharedPreferences;
-
 import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -12,38 +10,23 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.Looper;
 import android.util.Log;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingRequest;
-import com.google.android.gms.location.Priority;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentReference;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Arrays;
 
-
 public class LocationService extends Service {
-    private FusedLocationProviderClient fusedLocationClient;
-    private LocationCallback locationCallback;
     private GeofencingClient geofencingClient;
     private PendingIntent geofencePendingIntent;
     private double homeLatitude;
@@ -54,61 +37,58 @@ public class LocationService extends Service {
     private String officeGeofenceId;
     private float geofenceRadius;
 
-
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "LocationService: Service created and starting...");
         startForeground(1, createNotification());
-        Log.d("LocationService", "Service started");
 
-        // Initialize FusedLocationProviderClient
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        // Initialize GeofencingClient
         geofencingClient = LocationServices.getGeofencingClient(this);
+
+        // Load geofence data and set up geofences
         loadGeofenceDataFromPreferences();
-        // Create a LocationCallback to receive location updates
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult != null) {
-                    for (Location location : locationResult.getLocations()) {
-                        Log.d("LocationService", "Location received: " + location.getLatitude() + ", " + location.getLongitude());
-                        updateLocationInFirebase(location);
-                    }
-                } else {
-                    Log.d("LocationService", "No location received in location callback.");
-                }
-            }
-        };
-
-        // Start location updates
-        startLocationUpdates();
-        addGeofences();
-
-        // Start the service as a foreground service
 
     }
+
     private void loadGeofenceDataFromPreferences() {
+        Log.d(TAG,"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+        Log.d(TAG, "Loading geofence data from SharedPreferences...");
         SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         try {
-        // Extract home coordinates
-        String homeGeoCoordinates = preferences.getString(AppConstants.KEY_HOME_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
-        String[] homeParts = homeGeoCoordinates.split(",");
-        homeLatitude = parseCoordinate(homeParts[0], "Lat: ");
-        homeLongitude = parseCoordinate(homeParts[1], "Long: ");
-        homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
+            // Extract home coordinates
+            String homeGeoCoordinates = preferences.getString(AppConstants.KEY_HOME_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
+            String officeGeoCoordinates = preferences.getString(AppConstants.KEY_WORK_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
+            Log.d(TAG, "Home Geo Coordinates: " + homeGeoCoordinates);
+            Log.d(TAG, "Office Geo Coordinates: " + officeGeoCoordinates);
 
-        // Extract office coordinates
-        String officeGeoCoordinates = preferences.getString(AppConstants.KEY_WORK_GEO_COORDINATES, "Lat: 0.0, Long: 0.0");
-        String[] officeParts = officeGeoCoordinates.split(",");
-        officeLatitude = parseCoordinate(officeParts[0], "Lat: ");
-        officeLongitude = parseCoordinate(officeParts[1], "Long: ");
-        officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
+            if (homeGeoCoordinates.equals("Lat: 0.0, Long: 0.0") || officeGeoCoordinates.equals("Lat: 0.0, Long: 0.0")) {
+                Log.e(TAG, "Invalid geofence data in SharedPreferences. Fetching from Firebase...");
+                fetchGeofenceDataFromFirebase(preferences);
+            }
+            else {
+                String[] homeParts = homeGeoCoordinates.split(",");
+                homeLatitude = parseCoordinate(homeParts[0], "Lat: ");
+                homeLongitude = parseCoordinate(homeParts[1], "Long: ");
+                homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
 
-        // Retrieve geofenceRadius as a String and convert it to a float
-        String geofenceRadiusString = preferences.getString(AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS, String.valueOf(AppConstants.GEOFENCE_RADIUS_IN_METERS));
-        geofenceRadius = Float.parseFloat(geofenceRadiusString);
+                // Extract office coordinates
 
-        }catch (Exception e) {
+                String[] officeParts = officeGeoCoordinates.split(",");
+                officeLatitude = parseCoordinate(officeParts[0], "Lat: ");
+                officeLongitude = parseCoordinate(officeParts[1], "Long: ");
+                officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
+
+                // Retrieve geofence radius
+                String geofenceRadiusString = preferences.getString(AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS, String.valueOf(AppConstants.GEOFENCE_RADIUS_IN_METERS));
+                geofenceRadius = Float.parseFloat(geofenceRadiusString);
+
+                Log.d(TAG, "Geofence data loaded: Home (" + homeLatitude + ", " + homeLongitude + "), Office (" + officeLatitude + ", " + officeLongitude + "), Radius: " + geofenceRadius);
+                addGeofences();
+
+
+            }
+        } catch (Exception e) {
             Log.e(TAG, "Error loading geofence data from preferences", e);
             homeLatitude = 0.0;
             homeLongitude = 0.0;
@@ -117,8 +97,51 @@ public class LocationService extends Service {
             geofenceRadius = AppConstants.GEOFENCE_RADIUS_IN_METERS;
         }
     }
+    private void fetchGeofenceDataFromFirebase(SharedPreferences preferences) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String userId = preferences.getString(AppConstants.KEY_USER_ID, null);
 
+        if (userId == null) {
+            Log.e(TAG, "User ID not found in SharedPreferences.");
+            return;
+        }
 
+        db.collection("users").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String homeGeoCoordinates = documentSnapshot.getString("homegeoCoordinates");
+                        String officeGeoCoordinates = documentSnapshot.getString("officeGeoCoordinates");
+                        String geofenceRadiusString = documentSnapshot.getString("geofenceRadiusInMeters");
+
+                        if (homeGeoCoordinates != null && officeGeoCoordinates != null) {
+                            // Save to SharedPreferences for next time
+                            SharedPreferences.Editor editor = preferences.edit();
+                            editor.putString(AppConstants.KEY_HOME_GEO_COORDINATES, homeGeoCoordinates);
+                            editor.putString(AppConstants.KEY_WORK_GEO_COORDINATES, officeGeoCoordinates);
+                            editor.putString(AppConstants.KEY_GEOFENCE_RADIUS_IN_METERS, geofenceRadiusString);
+                            editor.apply();
+
+                            String[] officeParts = officeGeoCoordinates.split(",");
+                            String[] homeParts = homeGeoCoordinates.split(",");
+                            homeLatitude = parseCoordinate(homeParts[0], "Lat: ");
+                            homeLongitude = parseCoordinate(homeParts[1], "Long: ");
+                            homeGeofenceId = preferences.getString(AppConstants.KEY_HOME_GEOFENCE_ID, "HOME_GEOFENCE");
+                            // Parse and set geofence data
+                            officeLatitude = parseCoordinate(officeParts[0], "Lat: ");
+                            officeLongitude = parseCoordinate(officeParts[1], "Long: ");
+                            officeGeofenceId = preferences.getString(AppConstants.KEY_OFFICE_GEOFENCE_ID, "OFFICE_GEOFENCE");
+                            geofenceRadius = Float.parseFloat(geofenceRadiusString);
+                            addGeofences();
+
+                        } else {
+                            Log.e(TAG, "Invalid geofence data in Firebase.");
+                        }
+                    } else {
+                        Log.e(TAG, "No geofence data found in Firebase.");
+                    }
+                })
+                .addOnFailureListener(e -> Log.e(TAG, "Failed to fetch geofence data from Firebase.", e));
+    }
     // Helper method to parse individual coordinate parts
     private double parseCoordinate(String part, String prefix) {
         try {
@@ -129,29 +152,35 @@ public class LocationService extends Service {
         }
     }
 
-
-
-
-
     private void addGeofences() {
         Log.d(TAG, "Attempting to add geofences...");
+
+        // Validate geofence data
+        if (homeLatitude == 0.0 || homeLongitude == 0.0 || officeLatitude == 0.0 || officeLongitude == 0.0) {
+            Log.e(TAG, "Invalid geofence data. Skipping geofence setup.");
+            return;
+        }
+
+        // Log details of geofences being added
+        Log.d(TAG, "Home Geofence: ID = " + homeGeofenceId + ", Lat = " + homeLatitude + ", Long = " + homeLongitude + ", Radius = " + geofenceRadius);
+        Log.d(TAG, "Office Geofence: ID = " + officeGeofenceId + ", Lat = " + officeLatitude + ", Long = " + officeLongitude + ", Radius = " + geofenceRadius);
 
         Geofence homeGeofence = new Geofence.Builder()
                 .setRequestId(homeGeofenceId)
                 .setCircularRegion(homeLatitude, homeLongitude, geofenceRadius)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT | Geofence.GEOFENCE_TRANSITION_DWELL).setLoiteringDelay(10000)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();
 
         Geofence officeGeofence = new Geofence.Builder()
                 .setRequestId(officeGeofenceId)
                 .setCircularRegion(officeLatitude, officeLongitude, geofenceRadius)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT )
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT | Geofence.GEOFENCE_TRANSITION_DWELL).setLoiteringDelay(10000)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build();
 
         GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
-                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .setInitialTrigger(0) // No immediate trigger
                 .addGeofences(Arrays.asList(homeGeofence, officeGeofence))
                 .build();
 
@@ -162,8 +191,9 @@ public class LocationService extends Service {
                 PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        // Check permissions and add geofences
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Location permissions are not granted. Cannot add geofences.");
             return;
         }
@@ -176,7 +206,7 @@ public class LocationService extends Service {
     private Notification createNotification() {
         String channelId = "location_channel";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId, "Location Service", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel channel = new NotificationChannel(channelId, "Location Service", NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(channel);
         }
@@ -187,53 +217,6 @@ public class LocationService extends Service {
                 .build();
     }
 
-    private void startLocationUpdates() {
-        Log.d("LocationService", "Attempting to start location updates...");
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-                    .setMinUpdateIntervalMillis(5000)
-                    .build();
-
-            try {
-                Log.d("LocationService", "Requesting location updates...");
-                fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
-            } catch (SecurityException e) {
-                Log.e("LocationService", "SecurityException: Missing location permission", e);
-            }
-        } else {
-            Log.e("LocationService", "Permissions are not granted for location updates.");
-            stopSelf();
-        }
-    }
-
-    private void updateLocationInFirebase(Location location) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-
-        if (currentUser == null) {
-            Log.e("LocationService", "No user is currently logged in.");
-            return;
-        }
-
-        String employeeId = currentUser.getUid();
-        Log.d("LocationService", "Updating location in Firestore for employee ID: " + employeeId);
-
-        if (location == null) {
-            Log.e("LocationService", "Location is null. Cannot update in Firestore.");
-            return;
-        }
-
-        String geoCoordinates = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
-        DocumentReference docRef = db.collection("users").document(employeeId);
-
-//        docRef.update("geoCoordinates", geoCoordinates)
-//                .addOnSuccessListener(aVoid -> Log.d("LocationService", "Location updated in Firestore"))
-//                .addOnFailureListener(e -> Log.e("LocationService", "Failed to update location in Firestore", e));
-    }
-
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -242,15 +225,26 @@ public class LocationService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (fusedLocationClient != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
+
         if (geofencingClient != null && geofencePendingIntent != null) {
             geofencingClient.removeGeofences(geofencePendingIntent)
                     .addOnSuccessListener(aVoid -> Log.d(TAG, "Geofences removed"))
                     .addOnFailureListener(e -> Log.e(TAG, "Failed to remove geofences", e));
         }
-        Log.d("LocationService", "Location tracking stopped.");
+        Log.d(TAG, "LocationService: Service destroyed, geofences removed.");
     }
-}
 
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            Log.d(TAG, "LocationService restarted with null intent.");
+            loadGeofenceDataFromPreferences();
+        }
+        loadGeofenceDataFromPreferences();
+        return START_STICKY;
+    }
+
+
+
+}

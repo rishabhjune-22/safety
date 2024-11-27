@@ -13,6 +13,8 @@ import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.common.api.ApiException;
+
+import android.graphics.Color;
 import android.os.Looper;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 
@@ -453,40 +455,92 @@ showLocationPermissionDialog();
 
         return true;
     }
-
     private void checkAccountExists(Map<String, Object> userData) {
         // Show ProgressBar while checking the account
         progressBar.setVisibility(View.VISIBLE);
         sign_expand_btn.setEnabled(false);
+        sign_expand_btn.setBackgroundResource(R.color.disabledState);
 
-
-        // Check if mobile number exists first
-        checkForExistingField(db, "mobile", Objects.requireNonNull(userData.get("mobile")).toString(), () -> {
-            // If mobile doesn't exist, check for email
-            checkForExistingField(db, "email", Objects.requireNonNull(userData.get("email")).toString(), () -> {
-                // If neither exists, proceed with registration
-                registerUser(userData);
+        // Check if the selected role is Admin
+        if (isAdmin) {
+            // Step 1: Check if an admin already exists
+            checkForExistingAdmin(() -> {
+                // Step 2: Check if mobile number exists
+                checkForExistingField("mobile", Objects.requireNonNull(userData.get("mobile")).toString(), "Mobile number", () -> {
+                    // Step 3: Check if email exists
+                    checkForExistingField("email", Objects.requireNonNull(userData.get("email")).toString(), "Email", () -> {
+                        // Step 4: If all checks pass, proceed with registration
+                        registerUser(userData);
+                    });
+                });
             });
-        });
+        } else {
+            // If role is Employee, skip admin check and proceed to other checks
+            checkForExistingField("mobile", Objects.requireNonNull(userData.get("mobile")).toString(), "Mobile number", () -> {
+                checkForExistingField("email", Objects.requireNonNull(userData.get("email")).toString(), "Email", () -> {
+                    registerUser(userData);
+                });
+            });
+        }
+    }
+
+
+    private void checkForExistingAdmin(Runnable onSuccess) {
+        db.collection("users")
+                .whereEqualTo("isAdmin", true)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                        // Admin already exists
+                        progressBar.setVisibility(View.GONE);
+                        sign_expand_btn.setEnabled(true);
+                        sign_expand_btn.setBackgroundResource(R.color.green);
+                        Toast.makeText(requireContext(), "Admin exists. There can only be one Admin.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // No admin exists, proceed to the next check
+                        onSuccess.run();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    sign_expand_btn.setEnabled(true);
+                    sign_expand_btn.setBackgroundResource(R.color.green);
+                    Toast.makeText(requireContext(), "Error checking admin status. Please try again.", Toast.LENGTH_SHORT).show();
+                    Log.e("FirestoreCheck", "Error checking for admin", e);
+                });
     }
 
     // Method to check if a field (mobile or email) already exists in Firestore
-    private void checkForExistingField(FirebaseFirestore db, String field, String value, Runnable onSuccess) {
+    private void checkForExistingField(String field, String value, String fieldName, Runnable onSuccess) {
         db.collection("users")
                 .whereEqualTo(field, value)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && !task.getResult().isEmpty()) {
                         // Field exists (either mobile or email)
-                        Toast.makeText(requireContext(), "Mobile or email already exists", Toast.LENGTH_SHORT).show();
-                        sign_expand_btn.setEnabled(true);
+                        Toast.makeText(requireContext(), fieldName + " already exists. Please use a different " + fieldName + ".", Toast.LENGTH_SHORT).show();
                         progressBar.setVisibility(View.GONE);
+                        sign_expand_btn.setEnabled(true);
+                        sign_expand_btn.setBackgroundResource(R.color.green);
                     } else {
                         // Field does not exist, continue with the next step
                         onSuccess.run();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    sign_expand_btn.setEnabled(true);
+                    sign_expand_btn.setBackgroundResource(R.color.green);
+                    Toast.makeText(requireContext(), "Error checking " + fieldName + ". Please try again.", Toast.LENGTH_SHORT).show();
+                    Log.e("FirestoreCheck", "Error checking field: " + fieldName, e);
                 });
     }
+
+
+
+
+
+
 
 
     private void registerUser(Map<String, Object> userData) {
@@ -496,6 +550,8 @@ showLocationPermissionDialog();
             Toast.makeText(requireContext(), "Failed to fetch location", Toast.LENGTH_SHORT).show();
             progressBar.setVisibility(View.GONE);
             sign_expand_btn.setEnabled(true);
+            sign_expand_btn.setBackgroundResource(R.color.green);
+
             fetchLocationAndSetAddress();
             return; // Stop execution here
         }
@@ -512,6 +568,8 @@ showLocationPermissionDialog();
                         Toast.makeText(requireContext(), "Authentication failed: " + Objects.requireNonNull(task.getException()).getMessage(), Toast.LENGTH_SHORT).show();
                         sign_expand_btn.setEnabled(true);
                         progressBar.setVisibility(View.GONE);
+                        sign_expand_btn.setBackgroundResource(R.color.green);
+
                     }
                 });
     }
@@ -542,12 +600,16 @@ showLocationPermissionDialog();
                                     Toast.makeText(requireContext(), "User Registered Successfully", Toast.LENGTH_SHORT).show();
                                     sign_expand_btn.setEnabled(true);
                                     progressBar.setVisibility(View.GONE);
+                                    sign_expand_btn.setBackgroundResource(R.color.green);
+
                                 })
                                 .addOnFailureListener(e -> {
                                     // Firestore failure
                                     Toast.makeText(requireContext(), "Firestore error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                                     sign_expand_btn.setEnabled(true);
                                     progressBar.setVisibility(View.GONE);
+                                    sign_expand_btn.setBackgroundResource(R.color.green);
+
                                 });
                     });
                 }).addOnFailureListener(e -> {
@@ -555,6 +617,9 @@ showLocationPermissionDialog();
                     Toast.makeText(requireContext(), "Image upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     progressBar.setVisibility(View.GONE);
                     sign_expand_btn.setEnabled(true);
+                    sign_expand_btn.setBackgroundResource(R.color.green);
+
+
                 });
     }
 

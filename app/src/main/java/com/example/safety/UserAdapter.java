@@ -31,6 +31,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
 
@@ -67,16 +68,30 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         Date lastSeenDate = parseDate(lastSeenString);
         String formattedLastSeen = lastSeenDate != null ? formatLastSeen(lastSeenDate) : "N/A";
         holder.lastseen.setText(formattedLastSeen);
+        Map<String, List<String>> officeCheckinMap = user.getOfficeCheckIn(); // Adjust based on your Firestore schema
+        Map<String, List<String>> officeCheckoutMap = user.getOfficeCheckOut();
+        Map<String, List<String>> homeCheckinMap = user.getHomeCheckIn();
+        Map<String, List<String>> homeCheckoutMap = user.getHomeCheckOut();
+Log.d(TAG, "User office_checkin: " + officeCheckinMap+" office_checkout: "+officeCheckoutMap+" home_checkin: "+homeCheckinMap+" home_checkout: "+homeCheckoutMap);
+
+//        String latestDate = getLatestDate(officeCheckinMap, officeCheckoutMap, homeCheckinMap, homeCheckoutMap);
+//Log.d("latest date", "Latest Date: " + latestDate);
+
+        String currentDate = getCurrentDate();
+        Log.d("latest date", "Latest Date: " + currentDate);
+        String earliestOfficeCheckin = formatTime(  getEarliestTime(officeCheckinMap, currentDate));
+        String latestOfficeCheckout = formatTime(getLatestTime(officeCheckoutMap, currentDate));
+        String latestHomeCheckin = formatTime( getLatestTime(homeCheckinMap, currentDate));
+        String latestHomeCheckout = formatTime(getLatestTime(homeCheckoutMap, currentDate));
+        Log.d("latest date", "Earliest Office Checkin: " + earliestOfficeCheckin);
+        Log.d("latest date", "Latest Office Checkout: " + latestOfficeCheckout);
 
 
-        String formattedoffice_checkin = formatCheckinCheckout(user.getOffice_check_in());
-        String formattedoffice_checkout = formatCheckinCheckout(user.getOffice_check_out());
-        String formattedhome_checkin= formatCheckinCheckout(user.getHome_check_in());
-        String formattedhome_checkout = formatCheckinCheckout(user.getHome_check_out());
-        holder.office_checkin.setText(formattedoffice_checkin);
-        holder.office_checkout.setText(formattedoffice_checkout);
-        holder.home_checkin.setText(formattedhome_checkin);
-        holder.home_checkout.setText(formattedhome_checkout);
+
+        holder.office_checkin.setText(earliestOfficeCheckin);
+        holder.office_checkout.setText(latestOfficeCheckout);
+        holder.home_checkin.setText(latestHomeCheckin);
+        holder.home_checkout.setText(latestHomeCheckout);
         holder.emp_id.setText(user.getEmp_id());
 
 
@@ -121,11 +136,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
                 .build();
 
 
-//        holder.is_loc_enabled.setOnLongClickListener(v -> {
-//            // Show balloon tooltip on long press
-//            Toast.makeText(context,balloonText, Toast.LENGTH_SHORT).show();
-//            return true; // Return true to indicate the long click was handled
-//        });
+
 
         holder.is_loc_enabled.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -170,6 +181,59 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
                 .into(holder.profileImage);
     }
 
+//    private String getLatestDate(Map<String, List<String>>... maps) {
+//        String latestDate = null;
+//        for (Map<String, List<String>> map : maps) {
+//            if (map != null) {
+//                for (String date : map.keySet()) {
+//                    if (latestDate == null || date.compareTo(latestDate) > 0) {
+//                        latestDate = date;
+//                    }
+//                }
+//            }
+//        }
+//        return latestDate;
+//    }
+//
+//    private String getEarliestTime(Map<String, List<String>> map, String date) {
+//        if (map == null || date == null || !map.containsKey(date)) {
+//            return null;
+//        }
+//        List<String> times = map.get(date);
+//        return times.stream().min(String::compareTo).orElse(null);
+//    }
+
+//    private String getLatestTime(Map<String, List<String>> map, String date) {
+//        if (map == null || date == null || !map.containsKey(date)) {
+//            return null;
+//        }
+//        List<String> times = map.get(date);
+//        return times.stream().max(String::compareTo).orElse(null);
+//    }
+
+    private String getLatestTime(Map<String, List<String>> map, String date) {
+        if (map == null || date == null || !map.containsKey(date)) {
+            return "N/A"; // Return "N/A" if the current date is not found
+        }
+        List<String> times = map.get(date);
+        if (times == null || times.isEmpty()) {
+            return "N/A"; // Return "N/A" if no times are available for the current date
+        }
+        return times.stream().max(String::compareTo).orElse("N/A");
+    }
+
+    private String getEarliestTime(Map<String, List<String>> map, String date) {
+        if (map == null || date == null || !map.containsKey(date)) {
+            return "N/A"; // Return "N/A" if the current date is not found
+        }
+        List<String> times = map.get(date);
+        if (times == null || times.isEmpty()) {
+            return "N/A"; // Return "N/A" if no times are available for the current date
+        }
+        return times.stream().min(String::compareTo).orElse("N/A");
+    }
+
+
 
     private Date parseDate(String dateString) {
         if (dateString == null || dateString.isEmpty()) {
@@ -185,7 +249,10 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             return null;
         }
     }
-
+    private String getCurrentDate() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        return dateFormat.format(new Date());
+    }
 
     private String formatLastSeen(Date lastSeenDate) {
         if (lastSeenDate == null) return null;
@@ -207,29 +274,41 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         return "Last seen " + dateFormat.format(lastSeenDate);
     }
 
-    public String formatCheckinCheckout(String time) {
-        if (time == null || time.isEmpty()) {
-            return "N/A"; // Default value for empty or null timestamps
+
+
+
+    private String formatTime(String time) {
+        if (time == null || time.isEmpty()  || time.equals("N/A")) {
+            Log.d("nullvalue","nullvalue");
+            return "N/A";
+
         }
+        Log.d("formatTime", "Input time: " + time);
 
-        SimpleDateFormat inputFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
-        SimpleDateFormat outputFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
-        outputFormat.setDateFormatSymbols(new java.text.DateFormatSymbols(Locale.getDefault()) {
-            @Override
-            public String[] getAmPmStrings() {
-                return new String[] { "AM", "PM" }; // Capitalize AM and PM
-            }
-        });
-
+        Log.d("invalidNA:","invalidNA");
         try {
+            // Input format from Firestore (assuming "HH:mm:ss")
+            SimpleDateFormat inputFormat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
             Date date = inputFormat.parse(time);
+
+            // Output format with uppercase AM/PM
+            SimpleDateFormat outputFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            outputFormat.setDateFormatSymbols(new java.text.DateFormatSymbols(Locale.getDefault()) {
+                @Override
+                public String[] getAmPmStrings() {
+                    return new String[]{"AM", "PM"}; // Capitalize AM and PM
+                }
+            });
+
             return outputFormat.format(date);
-        } catch (ParseException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            return "Invalid Time"; // Fallback for parsing errors
+            Log.d("invalidtime:","invalidtime");
+
+            return "Invalid Time"; // Return this if parsing fails
+
         }
     }
-
 
 
 
@@ -261,31 +340,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         }
     }
 
-    // Filter method with DiffUtil
-    public void filter(String text) {
-        List<User> newFilteredList = new ArrayList<>();
-        if (text.isEmpty()) {
-            newFilteredList.addAll(userList);
-        } else {
-            text = text.toLowerCase();
-            for (User user : userList) {
-                if (user.getName().toLowerCase().startsWith(text)) {
-                    newFilteredList.add(user);
-                }
-            }
-        }
 
-        // Calculate differences between old and new filtered lists
-        UserDiffCallback diffCallback = new UserDiffCallback(filteredList, newFilteredList);
-        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(diffCallback);
-
-        // Update the filtered list and dispatch the updates
-        filteredList.clear();
-        filteredList.addAll(newFilteredList);
-        diffResult.dispatchUpdatesTo(this);
-
-        Log.d(TAG, "filter: Filtered list size after filtering = " + filteredList.size());
-    }
 
     // Method to update the user list using DiffUtil
     public void updateUserList(List<User> newUserList) {
@@ -347,16 +402,17 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             boolean isLastSeenSame = (oldUser.getLastSeen() != null && oldUser.getLastSeen().equals(newUser.getLastSeen())) ||
                     (oldUser.getLastSeen() == null && newUser.getLastSeen() == null);
 
-            boolean isHomecheckInSame = (oldUser.getHome_check_in() != null && oldUser.getHome_check_in().equals(newUser.getHome_check_in())) ||
-                    (oldUser.getHome_check_in() == null && newUser.getHome_check_in() == null);
+            boolean isHomecheckInSame = (oldUser.getHomeCheckIn() != null && oldUser.getHomeCheckIn().equals(newUser.getHomeCheckIn())) ||
+                    (oldUser.getHomeCheckIn() == null && newUser.getHomeCheckIn() == null);
 
-            boolean isHomecheckOutSame = (oldUser.getHome_check_out() != null && oldUser.getHome_check_out().equals(newUser.getHome_check_out())) ||
-                    (oldUser.getHome_check_out() == null && newUser.getHome_check_out() == null);
+            boolean isHomecheckOutSame = (oldUser.getHomeCheckOut() != null && oldUser.getHomeCheckOut().equals(newUser.getHomeCheckOut())) ||
+                    (oldUser.getHomeCheckOut() == null && newUser.getHomeCheckOut() == null);
 
-            boolean isOfficeCheckInSame = (oldUser.getOffice_check_in() != null && oldUser.getOffice_check_in().equals(newUser.getOffice_check_in())) ||
-                    (oldUser.getOffice_check_in() == null && newUser.getOffice_check_in() == null);
-            boolean isOfficeCheckOutSame = (oldUser.getOffice_check_out() != null && oldUser.getOffice_check_out().equals(newUser.getOffice_check_out())) ||
-                    (oldUser.getOffice_check_out() == null && newUser.getOffice_check_out() == null);
+            boolean isOfficeCheckInSame = (oldUser.getOfficeCheckIn() != null && oldUser.getOfficeCheckIn().equals(newUser.getOfficeCheckIn())) ||
+                    (oldUser.getOfficeCheckIn() == null && newUser.getOfficeCheckIn() == null);
+
+            boolean isOfficeCheckOutSame = (oldUser.getOfficeCheckOut() != null && oldUser.getOfficeCheckOut().equals(newUser.getOfficeCheckOut())) ||
+                    (oldUser.getOfficeCheckOut() == null && newUser.getOfficeCheckOut() == null);
             boolean isEmpidSame = (oldUser.getEmp_id() != null && oldUser.getEmp_id().equals(newUser.getEmp_id())) ||
                     (oldUser.getEmp_id() == null && newUser.getEmp_id() == null);
 

@@ -64,7 +64,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation ("com.google.android.material:material")
     implementation("com.github.skydoves:balloon:1.6.9")
-    implementation ("com.google.android.gms:play-services-location:21.3.0")
+   // implementation ("com.google.android.gms:play-services-location:21.3.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+
     implementation ("com.google.android.material:material:1.9.0") // Use latest version
 
     implementation ("org.osmdroid:osmdroid-android:6.1.6")

@@ -19,7 +19,7 @@ public class AppConstants {
     public static volatile Double HOME_LATITUDE = null;
     public static volatile Double HOME_LONGITUDE = null;
 
-    public static final float GEOFENCE_RADIUS_IN_METERS = 100;
+    public static final float GEOFENCE_RADIUS_IN_METERS = 200;
 
     public static final String KEY_HOME_GEO_COORDINATES = "homeGeoCoordinates";
     public static final String KEY_WORK_GEO_COORDINATES = "workGeoCoordinates";

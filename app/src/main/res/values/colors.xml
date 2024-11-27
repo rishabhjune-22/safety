@@ -36,10 +36,10 @@
 
     <color name="light_gray_3">#e4e4e4</color>
     <color name="moderate_cyan">#40bad2</color>
-
+<color name="darkGreen">#399918</color>
     <color name="blue">#0000FF</color>
-
-
+<color name="darkBlue">#141E46</color>
+<color name="disabledState">#D3D3D3</color>
 
 
 </resources>

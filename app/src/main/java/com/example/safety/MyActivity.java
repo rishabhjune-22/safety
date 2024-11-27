@@ -20,7 +20,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MyActivity extends AppCompatActivity {
 
@@ -76,15 +78,23 @@ public class MyActivity extends AppCompatActivity {
                 }
 
                 if (documentSnapshot != null && documentSnapshot.exists()) {
-                    String homeCheckInTime = formatCheckinCheckout(safeGetString(documentSnapshot, "home_check_in"));
-                    String homeCheckOutTime = formatCheckinCheckout(safeGetString(documentSnapshot, "home_check_out"));
-                    String officeCheckInTime = formatCheckinCheckout(safeGetString(documentSnapshot, "office_check_in"));
-                    String officeCheckOutTime = formatCheckinCheckout(safeGetString(documentSnapshot, "office_check_out"));
 
-                    homecheckInTextView.setText(homeCheckInTime);
-                    homecheckOutTextView.setText(homeCheckOutTime);
-                    officecheckInTextView.setText(officeCheckInTime);
-                    officecheckOutTextView.setText(officeCheckOutTime);
+                    Map<String, List<String>> homeCheckinMap = (Map<String, List<String>>) documentSnapshot.get("HOME_GEOFENCE_checkin");
+                    Map<String, List<String>> homeCheckoutMap = (Map<String, List<String>>) documentSnapshot.get("HOME_GEOFENCE_checkout");
+                    Map<String, List<String>> officeCheckinMap = (Map<String, List<String>>) documentSnapshot.get("OFFICE_GEOFENCE_checkin");
+                    Map<String, List<String>> officeCheckoutMap = (Map<String, List<String>>) documentSnapshot.get("OFFICE_GEOFENCE_checkout");
+
+                    //String latestDate = getLatestDate(officeCheckinMap, officeCheckoutMap, homeCheckinMap, homeCheckoutMap);
+                    String currentDate = getCurrentDate();
+                    String earliestOfficeCheckin = formatTime(  getEarliestTime(officeCheckinMap, currentDate));
+                    String latestOfficeCheckout = formatTime(getLatestTime(officeCheckoutMap, currentDate));
+                    String latestHomeCheckin = formatTime( getLatestTime(homeCheckinMap, currentDate));
+                    String latestHomeCheckout = formatTime(getLatestTime(homeCheckoutMap, currentDate));
+
+                    homecheckInTextView.setText(latestHomeCheckin);
+                    homecheckOutTextView.setText(latestHomeCheckout);
+                    officecheckInTextView.setText(earliestOfficeCheckin);
+                    officecheckOutTextView.setText(latestOfficeCheckout);
                 } else {
                     Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
                 }
@@ -98,30 +108,79 @@ public class MyActivity extends AppCompatActivity {
         }
     }
 
-    private String safeGetString(DocumentSnapshot document, String key) {
-        return document.getString(key) != null ? document.getString(key) : "";
-    }
-
-    public String formatCheckinCheckout(String time) {
-        if (time == null || time.isEmpty()) {
-            return "Not Available";
-        }
-
-        SimpleDateFormat inputFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
-        SimpleDateFormat outputFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
-        outputFormat.setDateFormatSymbols(new java.text.DateFormatSymbols(Locale.getDefault()) {
-            @Override
-            public String[] getAmPmStrings() {
-                return new String[]{"AM", "PM"};
+    private String getLatestDate(Map<String, List<String>>... maps) {
+        String latestDate = null;
+        for (Map<String, List<String>> map : maps) {
+            if (map != null) {
+                for (String date : map.keySet()) {
+                    if (latestDate == null || date.compareTo(latestDate) > 0) {
+                        latestDate = date;
+                    }
+                }
             }
-        });
-
-        try {
-            Date date = inputFormat.parse(time);
-            return outputFormat.format(date);
-        } catch (ParseException e) {
-            Log.e("FormatError", "Error parsing time: " + time, e);
-            return "Invalid Time";
         }
+        return latestDate;
     }
-}
+
+    private String getCurrentDate() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        return dateFormat.format(new Date());
+    }
+    private String getEarliestTime(Map<String, List<String>> map, String date) {
+        if (map == null || date == null || !map.containsKey(date)) {
+            return "N/A"; // Return "N/A" if the current date is not found
+        }
+        List<String> times = map.get(date);
+        if (times == null || times.isEmpty()) {
+            return "N/A"; // Return "N/A" if no times are available for the current date
+        }
+        return times.stream().min(String::compareTo).orElse("N/A");
+    }
+
+    private String getLatestTime(Map<String, List<String>> map, String date) {
+        if (map == null || date == null || !map.containsKey(date)) {
+            return "N/A"; // Return "N/A" if the current date is not found
+        }
+        List<String> times = map.get(date);
+        if (times == null || times.isEmpty()) {
+            return "N/A"; // Return "N/A" if no times are available for the current date
+        }
+        return times.stream().max(String::compareTo).orElse("N/A");
+    }
+
+
+
+    private String formatTime(String time) {
+        if (time == null || time.isEmpty()  || time.equals("N/A")) {
+            Log.d("nullvalue","nullvalue");
+            return "N/A";
+
+        }
+        Log.d("formatTime", "Input time: " + time);
+
+        Log.d("invalidNA:","invalidNA");
+        try {
+            // Input format from Firestore (assuming "HH:mm:ss")
+            SimpleDateFormat inputFormat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+            Date date = inputFormat.parse(time);
+
+            // Output format with uppercase AM/PM
+            SimpleDateFormat outputFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            outputFormat.setDateFormatSymbols(new java.text.DateFormatSymbols(Locale.getDefault()) {
+                @Override
+                public String[] getAmPmStrings() {
+                    return new String[]{"AM", "PM"}; // Capitalize AM and PM
+                }
+            });
+
+            return outputFormat.format(date);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d("invalidtime:","invalidtime");
+
+            return "Invalid Time"; // Return this if parsing fails
+
+        }
+
+
+    }}

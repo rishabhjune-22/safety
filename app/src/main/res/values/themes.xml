@@ -2,7 +2,7 @@
 
     <!-- Base application theme for the light mode -->
     <style name="Base.Theme.Safety" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorControlNormal">@color/black</item>
+        <item name="colorControlNormal">@color/white</item>
         <!-- Set white status bar -->
         <item name="android:statusBarColor">@android:color/white</item>
         <!-- Dark icons and text for status bar -->

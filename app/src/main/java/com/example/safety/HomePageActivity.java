@@ -78,14 +78,12 @@ public class HomePageActivity extends AppCompatActivity {
             }
     );
 
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.activity_home_page);
-
-
-//        getWindow().setStatusBarColor(Color.BLACK);
-
 
         db = FirebaseFirestore.getInstance();
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -97,20 +95,20 @@ public class HomePageActivity extends AppCompatActivity {
         } else {
             redirectToLogin();
         }
+
         boolean isAdmin = getIntent().getBooleanExtra("isAdmin", false);
 
-if(isAdmin) {
-    setContentView(R.layout.activity_home_page);
-    initializeAdminUI();
-}
-else{
-    setContentView(R.layout.activity_home_employee);
+        if (isAdmin) {
+            setContentView(R.layout.activity_home_page);
+            initializeAdminUI();
+        } else {
+            setContentView(R.layout.activity_home_employee);
+            initializeEmployeeUI();
+        }
 
-    initializeEmployeeUI();
-
-}
         checkLocationPermission();
     }
+
 
     private void updateIsActiveStatus(boolean isActive) {
         if (userId != null) {
@@ -203,7 +201,13 @@ else{
         initializeCommonUI();
         // Track Employee Button Listener
         trackEmpButton = findViewById(R.id.track_activity_btn);
-        trackEmpButton.setOnClickListener(v -> startActivity(new Intent(HomePageActivity.this, trackemployee.class)));
+        trackEmpButton = findViewById(R.id.track_activity_btn);
+        if (trackEmpButton != null) {
+            trackEmpButton.setOnClickListener(v -> startActivity(new Intent(this, trackemployee.class)));
+        } else {
+            Log.e("HomePageActivity", "trackEmpButton not found in layout.");
+        }
+
 
         // Navigation Drawer Menu Click Listener
 
@@ -226,39 +230,95 @@ public void initializeEmployeeUI(){
 
 
 
+//    private void logOut() {
+//        if (logoutListener != null) {
+//            logoutListener.remove();
+//            logoutListener = null;
+//        }
+//
+//        String currentDeviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+//
+//        db.collection("users").document(userId)
+//                .update("isActive", false) // Clear the deviceId for this session
+//                .addOnCompleteListener(task -> {
+//                    Intent stopServiceIntent = new Intent(this, LocationService.class);
+//                    stopService(stopServiceIntent);
+//
+//                    FirebaseAuth.getInstance().signOut();
+//
+//                    SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+//                    SharedPreferences.Editor editor = preferences.edit();
+//                    editor.clear();
+//                    editor.apply();
+//
+//                    Toast.makeText(this, "You have been logged out.", Toast.LENGTH_SHORT).show();
+//                    redirectToLogin();
+//                });
+//    }
+//
+//
+//    private void redirectToLogin() {
+//        Intent intent = new Intent(HomePageActivity.this, MainActivity.class);
+//        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+//        startActivity(intent);
+//        finish();
+//    }
+
     private void logOut() {
+        // Remove any Firestore listeners to avoid memory leaks
         if (logoutListener != null) {
             logoutListener.remove();
             logoutListener = null;
         }
 
+        // Fetch the device ID
         String currentDeviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
+        // Update Firestore to mark the user as inactive
         db.collection("users").document(userId)
-                .update("isActive", false) // Clear the deviceId for this session
+                .update("isActive", false)
                 .addOnCompleteListener(task -> {
-                    Intent stopServiceIntent = new Intent(this, LocationService.class);
-                    stopService(stopServiceIntent);
-
-                    FirebaseAuth.getInstance().signOut();
-
-                    SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-                    SharedPreferences.Editor editor = preferences.edit();
-                    editor.clear();
-                    editor.apply();
-
-                    Toast.makeText(this, "You have been logged out.", Toast.LENGTH_SHORT).show();
-                    redirectToLogin();
+                    if (task.isSuccessful()) {
+                        // Successfully updated Firestore
+                        stopLocationServiceAndSignOut(); // Stop services and clear auth/session
+                    } else {
+                        // Log and handle errors if Firestore update fails
+                        Log.e("Logout", "Error updating Firestore: ", task.getException());
+                        Toast.makeText(this, "Failed to log out. Please try again.", Toast.LENGTH_SHORT).show();
+                    }
                 });
     }
 
+    private void stopLocationServiceAndSignOut() {
+        // Stop the location service
+        Intent stopServiceIntent = new Intent(this, LocationService.class);
+        stopService(stopServiceIntent);
+
+        // Sign out from Firebase Auth
+        FirebaseAuth.getInstance().signOut();
+
+        // Clear SharedPreferences
+        SharedPreferences preferences = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.clear();
+        editor.apply();
+
+        // Notify the user and redirect to login
+        Toast.makeText(this, "You have been logged out.", Toast.LENGTH_SHORT).show();
+        redirectToLogin();
+    }
 
     private void redirectToLogin() {
-        Intent intent = new Intent(HomePageActivity.this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
+        Intent loginIntent = new Intent(this, MainActivity.class);
+        loginIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(loginIntent);
         finish();
     }
+
+
+
+
+
 
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
